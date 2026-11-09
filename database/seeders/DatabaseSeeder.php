@@ -47,5 +47,7 @@ class DatabaseSeeder extends Seeder
                 $userData
             );
         }
+
+        $this->call(SocialSeeder::class);
     }
 }

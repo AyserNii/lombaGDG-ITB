@@ -18,7 +18,8 @@
                         Bareng Makan Bersama Tetangga
                     </span>
                     <span class="rounded-full bg-amber-400/20 px-3 py-1 text-xs font-bold text-amber-200 border border-amber-300/30">
-                        🍜 Ongkir Dibagi Rata · Hemat s/d 75%
+                        @include('partials.icons', ['name' => 'food', 'class' => 'mr-1 inline h-3.5 w-3.5'])
+                        Ongkir Dibagi Rata · Hemat s/d 75%
                     </span>
                 </div>
                 <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
@@ -98,7 +99,7 @@
                                 </div>
                                 <h3 class="text-base font-extrabold text-[#1e293b] mt-1 truncate">{{ $sesi['merchant'] }}</h3>
                                 <div class="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                                    <span class="font-extrabold text-amber-500">★ {{ $sesi['rating'] }}</span>
+                                    <span class="inline-flex items-center gap-1 font-extrabold text-amber-500">@include('partials.icons', ['name' => 'star', 'class' => 'h-3 w-3']) {{ $sesi['rating'] }}</span>
                                     <span>·</span>
                                     <span>{{ $sesi['distance'] }}</span>
                                 </div>
@@ -157,4 +158,3 @@
 
 </div>
 @endsection
-

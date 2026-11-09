@@ -18,7 +18,8 @@
                         Bareng Kirim Logistik Searah
                     </span>
                     <span class="rounded-full bg-blue-500/20 px-3 py-1 text-xs font-bold text-blue-300 border border-blue-400/30">
-                        🌱 Zero Empty Trips · Hemat Ongkir s/d 67%
+                        @include('partials.icons', ['name' => 'leaf', 'class' => 'mr-1 inline h-3.5 w-3.5'])
+                        Zero Empty Trips · Hemat Ongkir s/d 67%
                     </span>
                 </div>
                 <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
@@ -217,4 +218,3 @@
 
 </div>
 @endsection
-

@@ -18,7 +18,8 @@
                         Bareng Belanja Kebutuhan & Sembako
                     </span>
                     <span class="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300 border border-emerald-400/30">
-                        ⚡ Hemat s/d 40% dari Diskon Grosir
+                        @include('partials.icons', ['name' => 'sparkles', 'class' => 'mr-1 inline h-3.5 w-3.5'])
+                        Hemat s/d 40% dari Diskon Grosir
                     </span>
                 </div>
                 <h1 class="text-2xl md:text-4xl font-extrabold tracking-tight leading-tight">
@@ -74,16 +75,16 @@
                 Semua Kategori ({{ count($activeSessions) }})
             </button>
             <button type="button" class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition shadow-sm border border-slate-100">
-                🥬 Sayur & Buah Segar
+                @include('partials.icons', ['name' => 'leaf', 'class' => 'mr-1 inline h-4 w-4']) Sayur & Buah Segar
             </button>
             <button type="button" class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition shadow-sm border border-slate-100">
-                🍚 Sembako & Grosir Beras
+                @include('partials.icons', ['name' => 'bag', 'class' => 'mr-1 inline h-4 w-4']) Sembako & Grosir Beras
             </button>
             <button type="button" class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition shadow-sm border border-slate-100">
-                🏪 Minimarket & Harian
+                @include('partials.icons', ['name' => 'store', 'class' => 'mr-1 inline h-4 w-4']) Minimarket & Harian
             </button>
             <button type="button" class="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition shadow-sm border border-slate-100">
-                🛒 Supermarket Bulanan
+                @include('partials.icons', ['name' => 'cart', 'class' => 'mr-1 inline h-4 w-4']) Supermarket Bulanan
             </button>
         </div>
 
@@ -204,7 +205,7 @@
                         </div>
                         <div class="flex items-center justify-between gap-1">
                             <span class="text-[10px] font-bold text-slate-400">{{ $store['category'] }}</span>
-                            <span class="flex items-center gap-0.5 text-xs font-extrabold text-amber-500">★ {{ $store['rating'] }}</span>
+                            <span class="flex items-center gap-0.5 text-xs font-extrabold text-amber-500">@include('partials.icons', ['name' => 'star', 'class' => 'h-3 w-3']) {{ $store['rating'] }}</span>
                         </div>
                         <h4 class="text-sm font-extrabold text-[#1e293b] mt-1">{{ $store['name'] }}</h4>
                         <p class="text-[11px] text-emerald-600 font-semibold mt-1 leading-snug">{{ $store['promo'] }}</p>
@@ -220,4 +221,3 @@
 
 </div>
 @endsection
-
