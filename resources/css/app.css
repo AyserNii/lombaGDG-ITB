@@ -6,6 +6,49 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --color-brand-50: #eef3ff;
+    --color-brand-100: #dbe6ff;
+    --color-brand-200: #c3d4ff;
+    --color-brand-300: #9ab6ff;
+    --color-brand-400: #6b8cff;
+    --color-brand-500: #4f6bff;
+    --color-brand-600: #3d54f0;
+    --color-brand-700: #3344d4;
+    --color-brand-800: #2d3aaa;
+    --color-sidebar: #4c54d2;
+    --color-sidebar-dark: #3f46c0;
+    --color-ink: #1c2a4a;
+    --color-muted: #7b88a8;
+}
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply bg-[#eef2fb] text-ink antialiased;
+    }
+}
+
+@layer components {
+    .blob {
+        position: absolute;
+        border-radius: 9999px;
+        filter: blur(2px);
+    }
+
+    .login-hero-gif {
+        mix-blend-mode: lighten;
+        filter: contrast(1.08) saturate(1.15) brightness(1.05);
+    }
+
+    .ring-story {
+        background: conic-gradient(from 180deg, #4f6bff, #8b5cf6, #38bdf8, #4f6bff);
+    }
+
+    .feed-card {
+        @apply overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_10px_30px_rgba(76,84,210,0.08)];
+    }
 }
