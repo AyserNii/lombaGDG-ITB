@@ -80,7 +80,7 @@
 <script>
 function openLogoutModal() {
     // Tutup dropdown user di navbar jika sedang terbuka
-    const dropdown = document.getElementById('user-dropdown-menu');
+    const dropdown = document.getElementById('user-menu-dropdown') || document.getElementById('user-dropdown-menu');
     if (dropdown) {
         dropdown.classList.add('hidden');
         dropdown.style.display = 'none';

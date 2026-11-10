@@ -2,29 +2,55 @@
 
 namespace App\Http\Controllers\Customer;
 
+header('Cache-Control: no-store, private, no-cache, must-revalidate');
+header('Cache-Control: pre-check=0, post-check=0, max-age=0, max-stale = 0', false);
+header('Pragma: public');
+header('Pragma: no-cache');
+
 use App\Http\Controllers\Controller;
+use App\Models\Customer\StoryModel as MainModel;
 use App\Models\Story;
-use App\Models\StoryHighlight;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class StoryController extends Controller
 {
+    private $role;
+    private $module;
+    private $page;
+    private $title;
+    private $basePath;
+    private $routePrefix;
+    private $routeName;
+    private $lastPageKey;
+    private $alertKey;
+    private $sessionNamespace;
+
+    public function __construct()
+    {
+        $this->role             = 'customer';
+        $this->module           = 'cerita';
+        $this->page             = 'Cerita Gotong Royong';
+        $this->title            = 'Cerita & Sorotan Profil';
+        $this->basePath         = 'customer.stories';
+        $this->routePrefix      = 'customer.cerita';
+        $this->routeName        = 'customer.cerita.index';
+        $this->lastPageKey      = 'customer_story_last_page';
+        $this->alertKey         = 'customer_story_alert';
+        $this->sessionNamespace = 'customer_cerita';
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'image' => 'required|image|max:10240',
+            'image'   => 'required|image|max:10240',
             'caption' => 'nullable|string|max:2000',
         ]);
 
         $path = $request->file('image')->store('stories', 'public');
+        $userId = Auth::id() ?: 1;
 
-        Auth::user()->stories()->create([
-            'image' => $path,
-            'caption' => $validated['caption'] ?? null,
-            'expires_at' => now()->addDay(),
-        ]);
+        MainModel::tambah_story($userId, $path, $validated['caption'] ?? null);
 
         return redirect()->route('community')->with('success', 'Cerita berhasil dibagikan dan akan tampil selama 24 jam.');
     }
@@ -32,12 +58,13 @@ class StoryController extends Controller
     public function storeHighlight(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:40',
-            'story_ids' => 'required|array|min:1',
+            'title'       => 'required|string|max:40',
+            'story_ids'   => 'required|array|min:1',
             'story_ids.*' => 'required|integer|distinct|exists:stories,id',
         ]);
 
-        $stories = Story::where('user_id', Auth::id())
+        $userId = Auth::id() ?: 1;
+        $stories = Story::where('user_id', $userId)
             ->whereIn('id', $validated['story_ids'])
             ->get();
 
@@ -45,13 +72,7 @@ class StoryController extends Controller
             return back()->withErrors(['story_ids' => 'Cerita yang dipilih tidak valid.']);
         }
 
-        DB::transaction(function () use ($validated, $stories) {
-            $highlight = StoryHighlight::create([
-                'user_id' => Auth::id(),
-                'title' => $validated['title'],
-            ]);
-            $highlight->stories()->sync($stories->modelKeys());
-        });
+        MainModel::tambah_highlight($userId, $validated['title'], $validated['story_ids']);
 
         return back()->with('success', 'Cerita berhasil ditambahkan ke sorotan profil.');
     }

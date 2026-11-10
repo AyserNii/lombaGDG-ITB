@@ -3,97 +3,172 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer\BarengKirimModel as MainModel;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+
+header('Cache-Control: no-store, private, no-cache, must-revalidate');
+header('Cache-Control: pre-check=0, post-check=0, max-age=0, max-stale = 0', false);
+header('Pragma: public');
+header('Pragma: no-cache');
 
 class BarengKirimController extends Controller
 {
-    public function index()
+    private $role = 'customer';
+    private $module = 'gotongroyong';
+    private $page = 'kirim';
+    private $title = 'Bareng Kirim';
+
+    private $sessionNamespace;
+    private $basePath;
+    private $routePrefix;
+    private $routeName;
+    private $lastPageKey;
+    private $alertKey;
+
+    public function __construct()
     {
+        $this->routeName = '/' . $this->role . '/' . $this->module . '/' . $this->page;
+        $this->basePath = $this->role . '.' . $this->module . '.';
+        $this->routePrefix = $this->role . '.' . $this->page . '.';
+        $this->alertKey = 'notifikasi' . $this->role . $this->module;
+        $this->lastPageKey = 'url' . $this->role . $this->module . $this->page;
+        $this->sessionNamespace = 'sesi' . $this->role . $this->module;
+    }
+
+    public function list(Request $request, $halaman = '')
+    {
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 10;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalsesikirim = MainModel::total_sesikirim($maksoffset);
+        if ($totalsesikirim && $totalsesikirim->total > 0) {
+            $listsesikirim = MainModel::list_sesikirim($limit, $offset);
+        } else {
+            $listsesikirim = [];
+        }
+
+        $hasilsesikirim = new LengthAwarePaginator(
+            $listsesikirim,
+            $totalsesikirim->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilsesikirim->withPath($this->routeName);
+
         $user = Auth::user() ? Auth::user()->toArray() : session('user', [
             'name' => 'Grace Stanley',
             'location' => 'Beji, Depok',
         ]);
 
-        $routes = [
-            [
-                'id' => 1,
-                'origin' => 'Cluster Beji Indah',
-                'destination' => 'Margonda & Kampus UI Depok',
-                'vehicle' => 'Motor Gotong Royong (Box Belakang)',
-                'departure_time' => '14:30 WIB Hari Ini',
-                'status' => 'Berangkat 35 Menit Lagi',
-                'carrier_name' => 'Rian Hidayat',
-                'carrier_role' => 'Tetangga Cluster Beji Blok C',
-                'carrier_avatar' => 'RH',
-                'slots_total' => 4,
-                'slots_filled' => 2,
-                'cost_per_item' => 'Rp 6.000',
-                'normal_cost' => 'Rp 18.000',
-                'savings_percent' => '67%',
-                'package_sizes' => 'Paket Kecil / Sedang (< 3 kg)',
-                'drop_point' => 'Pos Satpam Blok B / Rumah No. 12',
-                'image' => 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'id' => 2,
-                'origin' => 'Beji Indah & Kukusan',
-                'destination' => 'Stasiun Depok Lama & ITC Depok',
-                'vehicle' => 'Mobil MPV (Kapasitas Luas)',
-                'departure_time' => '16:00 WIB Hari Ini',
-                'status' => 'Tersedia 3 Slot Lagi',
-                'carrier_name' => 'Bambang Soedirjo',
-                'carrier_role' => 'Tetangga Cluster Beji Blok A',
-                'carrier_avatar' => 'BS',
-                'slots_total' => 6,
-                'slots_filled' => 3,
-                'cost_per_item' => 'Rp 8.000',
-                'normal_cost' => 'Rp 24.000',
-                'savings_percent' => '66%',
-                'package_sizes' => 'Paket Sedang / Besar (< 10 kg)',
-                'drop_point' => 'Lobby Cluster Utama',
-                'image' => 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'id' => 3,
-                'origin' => 'Cluster Beji Indah',
-                'destination' => 'Cinere, Gandul & Sawangan',
-                'vehicle' => 'Kurir Mitra BARENG Express',
-                'departure_time' => '17:15 WIB Hari Ini',
-                'status' => 'Sesi Terbuka',
-                'carrier_name' => 'Fajar Santoso',
-                'carrier_role' => 'Mitra Pooling BARENG',
-                'carrier_avatar' => 'FS',
-                'slots_total' => 5,
-                'slots_filled' => 4,
-                'cost_per_item' => 'Rp 7.500',
-                'normal_cost' => 'Rp 22.000',
-                'savings_percent' => '65%',
-                'package_sizes' => 'Dokumen & Paket Reguler',
-                'drop_point' => 'Pos Satpam Gerbang Depan',
-                'image' => 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=600&q=80',
-            ],
-            [
-                'id' => 4,
-                'origin' => 'Margonda & Beji',
-                'destination' => 'Lenteng Agung & Cilandak (Jaksel)',
-                'vehicle' => 'Motor Gotong Royong Searah Kerja',
-                'departure_time' => 'Besok Pagi 07:30 WIB',
-                'status' => 'Sesi Komuter Pagi',
-                'carrier_name' => 'Doni Pradana',
-                'carrier_role' => 'Komuter Tetangga',
-                'carrier_avatar' => 'DP',
-                'slots_total' => 3,
-                'slots_filled' => 1,
-                'cost_per_item' => 'Rp 10.000',
-                'normal_cost' => 'Rp 28.000',
-                'savings_percent' => '64%',
-                'package_sizes' => 'Paket Ringan & Titipan Kantor',
-                'drop_point' => 'Pos Satpam Blok B-12',
-                'image' => 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80',
-            ],
-        ];
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = "";
+        $datakonten['parameterdata'] = "";
+        $datakonten['routes'] = $listsesikirim;
+        $datakonten['datasesikirim'] = $hasilsesikirim;
+        $datakonten['user'] = $user;
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
 
-        return view('customer.kirim.index', compact('user', 'routes'));
+        return view('customer.kirim.index', $datakonten);
+    }
+
+    public function index()
+    {
+        return $this->list(request());
+    }
+
+    public function caridata(Request $request): RedirectResponse
+    {
+        $cari = $request->input('cari', '');
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (empty($cari)) {
+            $pesan = "Kolom cari tidak boleh kosong!";
+            return redirect()->back()->with([$this->alertKey => 'error', 'pesan' => $pesan]);
+        }
+
+        return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah])->withInput();
+    }
+
+    public function cari(Request $request, $cari = '', $halaman = '')
+    {
+        $cari = str_replace('+', '/', $cari);
+        $cari = str_replace('-', ' ', $cari);
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 10;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalsesikirim = MainModel::total_sesikirimcari($cari, $maksoffset);
+        if ($totalsesikirim && $totalsesikirim->total > 0) {
+            $listsesikirim = MainModel::list_sesikirimcari($cari, $limit, $offset);
+        } else {
+            $listsesikirim = [];
+        }
+
+        $hasilsesikirim = new LengthAwarePaginator(
+            $listsesikirim,
+            $totalsesikirim->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilsesikirim->withPath($this->routeName . '/cari/' . $carirubah);
+
+        $user = Auth::user() ? Auth::user()->toArray() : session('user', [
+            'name' => 'Grace Stanley',
+            'location' => 'Beji, Depok',
+        ]);
+
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['menucore'] = $this->routePrefix . "list";
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = $cari;
+        $datakonten['parameterdata'] = "";
+        $datakonten['routes'] = $listsesikirim;
+        $datakonten['datasesikirim'] = $hasilsesikirim;
+        $datakonten['user'] = $user;
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
+
+        return view('customer.kirim.index', $datakonten);
     }
 }

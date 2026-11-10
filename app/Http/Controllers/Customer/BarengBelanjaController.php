@@ -3,124 +3,174 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer\BarengBelanjaModel as MainModel;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
+
+header('Cache-Control: no-store, private, no-cache, must-revalidate');
+header('Cache-Control: pre-check=0, post-check=0, max-age=0, max-stale = 0', false);
+header('Pragma: public');
+header('Pragma: no-cache');
 
 class BarengBelanjaController extends Controller
 {
-    public function index()
+    private $role = 'customer';
+    private $module = 'gotongroyong';
+    private $page = 'belanja';
+    private $title = 'Bareng Belanja';
+
+    private $sessionNamespace;
+    private $basePath;
+    private $routePrefix;
+    private $routeName;
+    private $lastPageKey;
+    private $alertKey;
+
+    public function __construct()
     {
+        $this->routeName = '/' . $this->role . '/' . $this->module . '/' . $this->page;
+        $this->basePath = $this->role . '.' . $this->module . '.';
+        $this->routePrefix = $this->role . '.' . $this->page . '.';
+        $this->alertKey = 'notifikasi' . $this->role . $this->module;
+        $this->lastPageKey = 'url' . $this->role . $this->module . $this->page;
+        $this->sessionNamespace = 'sesi' . $this->role . $this->module;
+    }
+
+    public function list(Request $request, $halaman = '')
+    {
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 10;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalsesibelanja = MainModel::total_sesibelanja($maksoffset);
+        if ($totalsesibelanja && $totalsesibelanja->total > 0) {
+            $listsesibelanja = MainModel::list_sesibelanja($limit, $offset);
+        } else {
+            $listsesibelanja = [];
+        }
+
+        $hasilsesibelanja = new LengthAwarePaginator(
+            $listsesibelanja,
+            $totalsesibelanja->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilsesibelanja->withPath($this->routeName);
+
         $user = Auth::user() ? Auth::user()->toArray() : session('user', [
             'name' => 'Grace Stanley',
             'location' => 'Beji, Depok',
         ]);
 
-        $activeSessions = [
-            [
-                'id' => 1,
-                'store' => 'Segar Mart Margonda',
-                'category' => 'Sayur & Buah Segar',
-                'distance' => '350m dari clustermu',
-                'host' => 'Budi Santoso',
-                'host_role' => 'Host Cluster Beji',
-                'host_avatar' => 'BS',
-                'participants_count' => 4,
-                'current_amount' => 165000,
-                'target_amount' => 200000,
-                'percent' => 82,
-                'time_left' => 'Sisa 22 menit',
-                'pickup_point' => 'Pos Satpam Blok B-12',
-                'image' => 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=600&q=80',
-                'popular_items' => ['Minyak Goreng 2L', 'Beras Ramos 5kg', 'Telur Ayam 1kg'],
-                'saving_est' => 'Gratis Ongkir + Diskon 15%',
-            ],
-            [
-                'id' => 2,
-                'store' => 'Indomaret Fresh Cluster 4',
-                'category' => 'Minimarket & Sembako',
-                'distance' => '500m dari clustermu',
-                'host' => 'Siti Rahma',
-                'host_role' => 'Host RT 03',
-                'host_avatar' => 'SR',
-                'participants_count' => 3,
-                'current_amount' => 85000,
-                'target_amount' => 100000,
-                'percent' => 85,
-                'time_left' => 'Sisa 14 menit',
-                'pickup_point' => 'Lobby Cluster Timur',
-                'image' => 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?auto=format&fit=crop&w=600&q=80',
-                'popular_items' => ['Gula Pasir 1kg', 'Susu UHT 1L', 'Kopi Bubuk'],
-                'saving_est' => 'Ongkir dibagi 3 (Hemat Rp 9.000)',
-            ],
-            [
-                'id' => 3,
-                'store' => 'Grosir Beras & Sembako Bu Rini',
-                'category' => 'Grosir Bulk',
-                'distance' => '750m dari clustermu',
-                'host' => 'Ahmad Fauzi',
-                'host_role' => 'Host Komunitas Margonda',
-                'host_avatar' => 'AF',
-                'participants_count' => 6,
-                'current_amount' => 420000,
-                'target_amount' => 500000,
-                'percent' => 84,
-                'time_left' => 'Sisa 45 menit',
-                'pickup_point' => 'Rumah Host No. 18',
-                'image' => 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=600&q=80',
-                'popular_items' => ['Beras Pandan Wangi 10kg', 'Minyak Goreng Dus', 'Tepung Terigu'],
-                'saving_est' => 'Diskon Grosir 20% langsung!',
-            ],
-            [
-                'id' => 4,
-                'store' => 'Superindo Depok Town Square',
-                'category' => 'Supermarket',
-                'distance' => '1.1 km dari clustermu',
-                'host' => 'Dewi Lestari',
-                'host_role' => 'Host Beji Indah',
-                'host_avatar' => 'DL',
-                'participants_count' => 5,
-                'current_amount' => 280000,
-                'target_amount' => 300000,
-                'percent' => 93,
-                'time_left' => 'Sisa 9 menit (Hampir Penuh!)',
-                'pickup_point' => 'Pos Satpam Gerbang Depan',
-                'image' => 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=600&q=80',
-                'popular_items' => ['Daging Ayam Segar', 'Deterjen Cair', 'Buah Apel Fuji'],
-                'saving_est' => 'Free Delivery Superindo',
-            ],
-        ];
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = "";
+        $datakonten['parameterdata'] = "";
+        $datakonten['activeSessions'] = $listsesibelanja;
+        $datakonten['stores'] = MainModel::list_mitratoko();
+        $datakonten['datasesibelanja'] = $hasilsesibelanja;
+        $datakonten['user'] = $user;
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
 
-        $stores = [
-            [
-                'name' => 'Segar Mart Margonda',
-                'category' => 'Sayur & Buah Organik',
-                'rating' => '4.9',
-                'promo' => 'Diskon Rp 25.000 jika belanja bareng min Rp 200rb',
-                'image' => 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&q=80',
-            ],
-            [
-                'name' => 'Grosir Beras Bu Rini',
-                'category' => 'Pusat Sembako & Beras',
-                'rating' => '4.8',
-                'promo' => 'Beli 5 karung gratis ongkir & bonus minyak',
-                'image' => 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
-            ],
-            [
-                'name' => 'Indomaret Fresh Beji',
-                'category' => 'Minimarket & Kebutuhan Harian',
-                'rating' => '4.7',
-                'promo' => 'Tebus Murah Khusus Sesi BARENG Cluster',
-                'image' => 'https://images.unsplash.com/photo-1583258292688-d0213dc5a3a8?auto=format&fit=crop&w=400&q=80',
-            ],
-            [
-                'name' => 'Pasar Tradisional Kemiri Muka',
-                'category' => 'Bumbu, Ikan & Daging Segar',
-                'rating' => '4.8',
-                'promo' => 'Kurir Gotong Royong Langsung Pagi Hari',
-                'image' => 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=400&q=80',
-            ],
-        ];
+        return view('customer.belanja.index', $datakonten);
+    }
 
-        return view('customer.belanja.index', compact('user', 'activeSessions', 'stores'));
+    public function index()
+    {
+        return $this->list(request());
+    }
+
+    public function caridata(Request $request): RedirectResponse
+    {
+        $cari = $request->input('cari', '');
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (empty($cari)) {
+            $pesan = "Kolom cari tidak boleh kosong!";
+            return redirect()->back()->with([$this->alertKey => 'error', 'pesan' => $pesan]);
+        }
+
+        return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah])->withInput();
+    }
+
+    public function cari(Request $request, $cari = '', $halaman = '')
+    {
+        $cari = str_replace('+', '/', $cari);
+        $cari = str_replace('-', ' ', $cari);
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 10;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalsesibelanja = MainModel::total_sesibelanjacari($cari, $maksoffset);
+        if ($totalsesibelanja && $totalsesibelanja->total > 0) {
+            $listsesibelanja = MainModel::list_sesibelanjacari($cari, $limit, $offset);
+        } else {
+            $listsesibelanja = [];
+        }
+
+        $hasilsesibelanja = new LengthAwarePaginator(
+            $listsesibelanja,
+            $totalsesibelanja->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilsesibelanja->withPath($this->routeName . '/cari/' . $carirubah);
+
+        $user = Auth::user() ? Auth::user()->toArray() : session('user', [
+            'name' => 'Grace Stanley',
+            'location' => 'Beji, Depok',
+        ]);
+
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['menucore'] = $this->routePrefix . "list";
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = $cari;
+        $datakonten['parameterdata'] = "";
+        $datakonten['activeSessions'] = $listsesibelanja;
+        $datakonten['stores'] = MainModel::list_mitratoko();
+        $datakonten['datasesibelanja'] = $hasilsesibelanja;
+        $datakonten['user'] = $user;
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
+
+        return view('customer.belanja.index', $datakonten);
     }
 }

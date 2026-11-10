@@ -4,21 +4,170 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
+use App\Models\Customer\PostModel as MainModel;
 use App\Models\Notification;
 use App\Models\Post;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
+
+header('Cache-Control: no-store, private, no-cache, must-revalidate');
+header('Cache-Control: pre-check=0, post-check=0, max-age=0, max-stale = 0', false);
+header('Pragma: public');
+header('Pragma: no-cache');
 
 class PostController extends Controller
 {
+    private $role = 'customer';
+    private $module = 'komunitas';
+    private $page = 'posts';
+    private $title = 'Postingan Komunitas';
+
+    private $sessionNamespace;
+    private $basePath;
+    private $routePrefix;
+    private $routeName;
+    private $lastPageKey;
+    private $alertKey;
+
+    public function __construct()
+    {
+        $this->routeName = '/' . $this->role . '/' . $this->module . '/' . $this->page;
+        $this->basePath = $this->role . '.' . $this->module . '.';
+        $this->routePrefix = $this->role . '.' . $this->module . '.' . $this->page . '.';
+        $this->alertKey = 'notifikasi' . $this->role . $this->module;
+        $this->lastPageKey = 'url' . $this->role . $this->module . $this->page;
+        $this->sessionNamespace = 'sesi' . $this->role . $this->module;
+    }
+
+    public function list(Request $request, $halaman = '')
+    {
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'list');
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 12;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalpost = MainModel::total_post($maksoffset);
+        if ($totalpost && $totalpost->total > 0) {
+            $listpost = MainModel::list_post($limit, $offset);
+        } else {
+            $listpost = collect();
+        }
+
+        $hasilpost = new LengthAwarePaginator(
+            $listpost,
+            $totalpost->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilpost->withPath($this->routeName);
+
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = "";
+        $datakonten['parameterdata'] = "";
+        $datakonten['datapost'] = $hasilpost;
+
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
+
+        return view('community', $datakonten);
+    }
+
+    public function caridata(Request $request): RedirectResponse
+    {
+        $cari = $request->input('cari', '');
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (empty($cari)) {
+            $pesan = "Kolom cari tidak boleh kosong!";
+            return redirect()->back()->with([$this->alertKey => 'error', 'pesan' => $pesan]);
+        }
+
+        return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah])->withInput();
+    }
+
+    public function cari(Request $request, $cari = '', $halaman = '')
+    {
+        $cari = str_replace('+', '/', $cari);
+        $cari = str_replace('-', ' ', $cari);
+        $carirubah = str_replace('/', '+', $cari);
+        $carirubah = preg_split('/\s+/', $carirubah);
+        $carirubah = implode('-', $carirubah);
+
+        if (!empty($halaman) && !filter_var($halaman, FILTER_VALIDATE_INT)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (!empty($halaman) && ($halaman == 1 || $halaman < 1)) {
+            return redirect()->route($this->routePrefix . 'cari', ['cari' => $carirubah]);
+        } else if (empty($halaman)) {
+            $halaman = 1;
+        }
+
+        $limit = 12;
+        $offset = ($halaman - 1) * $limit;
+        $makshalaman = 100;
+        $maksoffset = $limit * $makshalaman;
+        if ($offset > $maksoffset) {
+            $offset = $maksoffset;
+        }
+
+        $totalpost = MainModel::total_postcari($cari, $maksoffset);
+        if ($totalpost && $totalpost->total > 0) {
+            $listpost = MainModel::list_postcari($cari, $limit, $offset);
+        } else {
+            $listpost = collect();
+        }
+
+        $hasilpost = new LengthAwarePaginator(
+            $listpost,
+            $totalpost->total ?? 0,
+            $limit,
+            $halaman
+        );
+
+        $hasilpost->withPath($this->routeName . '/cari/' . $carirubah);
+
+        $datakonten['judulcore'] = $this->title;
+        $datakonten['menucore'] = $this->routePrefix . "list";
+        $datakonten['caricore'] = $this->routePrefix . "caridata";
+        $datakonten['caricoredata'] = $cari;
+        $datakonten['parameterdata'] = "";
+        $datakonten['datapost'] = $hasilpost;
+
+        $datakonten['basePath'] = $this->basePath;
+        $datakonten['routePrefix'] = $this->routePrefix;
+        $datakonten['sessionNamespace'] = $this->sessionNamespace;
+
+        return view('community', $datakonten);
+    }
+
     public function show(int $id)
     {
         $authUser = Auth::user();
         $post = Post::with(['user'])->findOrFail($id);
 
-        $isLiked = $authUser ? $post->likes()->where('user_id', $authUser->id)->exists() : false;
-        $isSaved = $authUser ? $authUser->savedPosts()->where('post_id', $post->id)->exists() : false;
+        $isLiked = $authUser ? MainModel::cek_like($post->id, $authUser->id) : false;
+        $isSaved = $authUser ? MainModel::cek_saved($post->id, $authUser->id) : false;
         $isFollowingAuthor = $authUser && $post->user_id !== $authUser->id ? $authUser->isFollowing($post->user_id) : false;
 
         $comments = Comment::where('post_id', $post->id)
@@ -38,7 +187,7 @@ class PostController extends Controller
                 'image' => $post->image,
                 'type' => $post->type,
                 'likes_count' => $post->likes_count,
-                'comments_count' => $post->allComments()->count(),
+                'comments_count' => MainModel::total_komentar($post->id),
                 'is_liked' => $isLiked,
                 'is_saved' => $isSaved,
                 'created_at' => $post->created_at->diffForHumans(),
@@ -58,13 +207,17 @@ class PostController extends Controller
     public function destroy(int $id)
     {
         $authUser = Auth::user();
-        $post = Post::findOrFail($id);
+        $post = MainModel::cek_post($id);
+
+        if (!$post) {
+            return response()->json(['success' => false, 'error' => 'Postingan tidak ditemukan.'], 404);
+        }
 
         if ($post->user_id !== $authUser->id) {
             return response()->json(['success' => false, 'error' => 'Tidak memiliki izin.'], 403);
         }
 
-        $post->delete();
+        MainModel::hapus_post($id);
 
         return response()->json([
             'success' => true,
@@ -75,18 +228,21 @@ class PostController extends Controller
     public function toggleLike(Request $request, int $id)
     {
         $authUser = Auth::user();
-        $post = Post::findOrFail($id);
+        $post = MainModel::cek_post($id);
+        if (!$post) {
+            return response()->json(['success' => false, 'error' => 'Postingan tidak ditemukan.'], 404);
+        }
 
-        $existingLike = $post->likes()->where('user_id', $authUser->id)->first();
+        $isLiked = MainModel::cek_like($id, $authUser->id);
 
-        if ($existingLike) {
-            $post->likes()->detach($authUser->id);
+        if ($isLiked) {
+            MainModel::hapus_like($id, $authUser->id);
             $liked = false;
         } else {
-            $post->likes()->attach($authUser->id);
+            MainModel::tambah_like($id, $authUser->id);
             $liked = true;
 
-            // Create notification if liking someone else's post
+            // Notifikasi ke author jika bukan postingan sendiri
             if ($post->user_id !== $authUser->id) {
                 Notification::create([
                     'user_id' => $post->user_id,
@@ -99,8 +255,8 @@ class PostController extends Controller
             }
         }
 
-        $likesCount = $post->likes()->count();
-        $post->update(['likes_count' => $likesCount]);
+        $freshPost = MainModel::cek_post($id);
+        $likesCount = $freshPost->likes_count ?? 0;
 
         return response()->json([
             'success' => true,
@@ -126,7 +282,7 @@ class PostController extends Controller
         return response()->json([
             'success' => true,
             'comments' => $comments,
-            'comments_count' => $post->allComments()->count(),
+            'comments_count' => MainModel::total_komentar($post->id),
             'post' => [
                 'id' => $post->id,
                 'caption' => $post->caption,
@@ -149,29 +305,25 @@ class PostController extends Controller
         ]);
 
         $authUser = Auth::user();
-        $post = Post::findOrFail($id);
+        $post = MainModel::cek_post($id);
+        if (!$post) {
+            return response()->json(['success' => false, 'error' => 'Postingan tidak ditemukan.'], 404);
+        }
 
-        $comment = Comment::create([
-            'post_id' => $post->id,
-            'user_id' => $authUser->id,
-            'parent_id' => $request->parent_id,
-            'body' => trim($request->body),
-        ]);
+        $res = MainModel::tambah_komentar($id, $authUser->id, trim($request->body), $request->parent_id);
+        $comment = Comment::with(['user', 'replies.user'])->find($res->id_comment);
+        $postModel = Post::find($id);
 
-        // Increment count
-        $commentsCount = $post->allComments()->count();
-        $post->update(['comments_count' => $commentsCount]);
-
-        // Notifications
+        // Notifikasi komentar
         if ($request->parent_id) {
-            $parent = Comment::find($request->parent_id);
+            $parent = MainModel::data_komentar($request->parent_id);
             if ($parent && $parent->user_id !== $authUser->id) {
                 Notification::create([
                     'user_id' => $parent->user_id,
                     'actor_id' => $authUser->id,
                     'type' => 'comment',
                     'message' => '@' . ($authUser->username ?? $authUser->name) . ' membalas komentar Anda: "' . Str::limit($comment->body, 30) . '"',
-                    'post_id' => $post->id,
+                    'post_id' => $id,
                     'is_read' => false,
                 ]);
             }
@@ -181,16 +333,16 @@ class PostController extends Controller
                 'actor_id' => $authUser->id,
                 'type' => 'comment',
                 'message' => '@' . ($authUser->username ?? $authUser->name) . ' mengomentari postingan Anda: "' . Str::limit($comment->body, 30) . '"',
-                'post_id' => $post->id,
+                'post_id' => $id,
                 'is_read' => false,
             ]);
         }
 
-        $comment->load('user', 'replies.user');
+        $commentsCount = MainModel::total_komentar($id);
 
         return response()->json([
             'success' => true,
-            'comment' => $this->formatComment($comment, $authUser, $post),
+            'comment' => $this->formatComment($comment, $authUser, $postModel),
             'comments_count' => $commentsCount,
         ]);
     }
@@ -198,25 +350,24 @@ class PostController extends Controller
     public function destroyComment(int $commentId)
     {
         $authUser = Auth::user();
-        $comment = Comment::with('post')->findOrFail($commentId);
+        $comment = MainModel::data_komentar($commentId);
 
-        // Allow deletion if commenter is auth user OR post owner is auth user
-        if ($comment->user_id !== $authUser->id && $comment->post->user_id !== $authUser->id) {
+        if (!$comment) {
+            return response()->json(['success' => false, 'error' => 'Komentar tidak ditemukan.'], 404);
+        }
+
+        $post = MainModel::cek_post($comment->post_id);
+
+        // Hanya pemilik komentar atau pemilik postingan yang boleh menghapus
+        if ($comment->user_id !== $authUser->id && (!$post || $post->user_id !== $authUser->id)) {
             return response()->json(['success' => false, 'error' => 'Tidak memiliki izin menghapus komentar ini.'], 403);
         }
 
-        $postId = $comment->post_id;
-        $comment->delete();
-
-        $post = Post::find($postId);
-        $count = $post ? $post->allComments()->count() : 0;
-        if ($post) {
-            $post->update(['comments_count' => $count]);
-        }
+        $result = MainModel::hapus_komentar($commentId);
 
         return response()->json([
             'success' => true,
-            'comments_count' => $count,
+            'comments_count' => $result ? $result->comments_count : 0,
         ]);
     }
 
@@ -250,4 +401,3 @@ class PostController extends Controller
         ];
     }
 }
-
