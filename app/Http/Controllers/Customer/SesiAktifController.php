@@ -73,10 +73,10 @@ class SesiAktifController extends Controller
 
         $hasilsesi->withPath($this->routeName);
 
-        $user = Auth::user() ? Auth::user()->toArray() : session('user', [
-            'name' => 'Grace Stanley',
-            'location' => 'Beji, Depok',
-        ]);
+        // $user = Auth::user() ? Auth::user()->toArray() : session('user', [
+        //     'name' => 'Grace Stanley',
+        //     'location' => 'Beji, Depok',
+        // ]);
 
         $exploreSessions = MainModel::list_exploresesi(10, 0);
 
@@ -87,7 +87,7 @@ class SesiAktifController extends Controller
         $datakonten['mySessions'] = $listsesi;
         $datakonten['exploreSessions'] = $exploreSessions;
         $datakonten['datasesi'] = $hasilsesi;
-        $datakonten['user'] = $user;
+        // $datakonten['user'] = $user;
         $datakonten['basePath'] = $this->basePath;
         $datakonten['routePrefix'] = $this->routePrefix;
         $datakonten['sessionNamespace'] = $this->sessionNamespace;

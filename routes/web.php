@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\GoogleAuthController as AuthGoogle;
 use App\Http\Controllers\Auth\LoginController as AuthLogin;
 use App\Http\Controllers\Auth\RegisterController as AuthRegister;
 use App\Http\Controllers\Customer\BarengBelanjaController as CustomerBarengBelanja;
@@ -34,6 +35,10 @@ Route::prefix('auth')->name('auth.')->group(function () {
         Route::post('/login', [AuthLogin::class, 'authenticate'])->name('authenticate');
         Route::get('/register', [AuthRegister::class, 'showRegistrationForm'])->name('register');
         Route::post('/register', [AuthRegister::class, 'register'])->name('store');
+
+        // Google OAuth
+        Route::get('/google', [AuthGoogle::class, 'redirectToGoogle'])->name('google');
+        Route::get('/google/callback', [AuthGoogle::class, 'handleGoogleCallback'])->name('google.callback');
     });
 
     Route::post('/logout', [AuthLogin::class, 'logout'])->name('logout');
