@@ -164,4 +164,38 @@ class ChatController extends Controller
         $receiver = User::find($request->receiver_id);
         return redirect()->route('chat', ['user' => $receiver->username ?? $receiver->id]);
     }
+
+    public function sync(Request $request)
+    {
+        $authUser = Auth::user();
+        $receiverId = $request->query('receiver_id');
+
+        if (!$authUser || !$receiverId) {
+            return response()->json(['messages' => []]);
+        }
+
+        // Tandai pesan dari lawan bicara sebagai sudah dibaca
+        MainModel::tandai_dibaca($authUser->id, $receiverId);
+
+        // Ambil semua pesan percakapan
+        $messages = Message::where(function ($q) use ($authUser, $receiverId) {
+            $q->where('sender_id', $authUser->id)->where('receiver_id', $receiverId);
+        })->orWhere(function ($q) use ($authUser, $receiverId) {
+            $q->where('sender_id', $receiverId)->where('receiver_id', $authUser->id);
+        })->orderBy('created_at', 'asc')->get();
+
+        return response()->json([
+            'success'  => true,
+            'messages' => $messages->map(function ($m) use ($authUser) {
+                return [
+                    'id'          => $m->id,
+                    'text'        => $m->message,
+                    'media_url'   => $m->media_url,
+                    'is_outgoing' => $m->sender_id === $authUser->id,
+                    'is_read'     => (bool) $m->is_read,
+                    'created_at'  => Carbon::parse($m->created_at)->format('H:i'),
+                ];
+            }),
+        ]);
+    }
 }

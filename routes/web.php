@@ -163,6 +163,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/comments/{id}', [CustomerPost::class, 'destroyComment'])->name('comments.destroy');
 
     Route::get('/chat', [CustomerChat::class, 'index'])->name('chat');
+    Route::get('/chat/sync', [CustomerChat::class, 'sync'])->name('chat.sync');
     Route::post('/chat/send', [CustomerChat::class, 'send'])->name('chat.send');
     Route::post('/stories', [CustomerStory::class, 'store'])->name('stories.store');
     Route::post('/stories/highlights', [CustomerStory::class, 'storeHighlight'])->name('stories.highlights.store');

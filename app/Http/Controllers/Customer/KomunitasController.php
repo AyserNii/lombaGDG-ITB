@@ -60,7 +60,8 @@ class KomunitasController extends Controller
             ->where('expires_at', '>', now())
             ->latest()
             ->get()
-            ->groupBy('user_id');
+            ->groupBy('user_id')
+            ->toBase();
 
         if ($authUser) {
             $ownStories = $storyGroups->pull($authUser->id);
@@ -70,20 +71,51 @@ class KomunitasController extends Controller
         }
 
         $highlightedStoryIds = Story::whereHas('highlights')->pluck('id')->all();
-        $storyViewerData = $storyGroups->flatten()->values()->map(fn (Story $story) => [
-            'id' => $story->id,
-            'image' => Storage::disk('public')->url($story->image),
-            'caption' => $story->caption,
-            'name' => $story->user->name,
-            'username' => $story->user->username,
-            'created_at' => $story->created_at->diffForHumans(),
-            'is_own' => $authUser ? ($story->user_id === $authUser->id) : false,
-            'is_highlighted' => in_array($story->id, $highlightedStoryIds),
-        ]);
+        $storyViewerData = $storyGroups->flatten()->values()->map(function (Story $story) use ($authUser, $highlightedStoryIds, $storyGroups) {
+            $userStories = $storyGroups->get($story->user_id, collect());
+            $userStoryIndex = $userStories->search(fn ($s) => $s->id === $story->id);
+            return [
+                'id'                 => $story->id,
+                'user_id'            => $story->user_id,
+                'user_avatar'        => $story->user ? $story->user->avatar : null,
+                'user_initials'      => strtoupper(substr($story->user ? $story->user->name : 'User', 0, 2)),
+                'image'              => Storage::disk('public')->url($story->image),
+                'caption'            => $story->caption,
+                'name'               => $story->user ? $story->user->name : 'User',
+                'username'           => $story->user && $story->user->username ? $story->user->username : ($story->user ? $story->user->name : 'user'),
+                'created_at'         => $story->created_at->diffForHumans(null, true, true),
+                'is_own'             => $authUser ? ($story->user_id === $authUser->id) : false,
+                'is_highlighted'     => in_array($story->id, $highlightedStoryIds),
+                'user_story_index'   => $userStoryIndex !== false ? $userStoryIndex : 0,
+                'user_stories_total' => $userStories->count(),
+                'user_story_ids'     => $userStories->pluck('id')->all(),
+            ];
+        });
         $myStories = $authUser ? $storyGroups->get($authUser->id, collect()) : collect();
-        $otherStoryGroups = $authUser ? $storyGroups->except($authUser->id) : $storyGroups;
+        $otherStoryGroups = $authUser ? $storyGroups->filter(fn ($stories, $userId) => (int)$userId !== (int)$authUser->id) : $storyGroups;
 
-        $posts = Post::with('user')->latest()->get();
+        // Dynamic Post Filtering by Type / Tag
+        $activeType = $request->query('type');
+        $postQuery = Post::with('user')->latest();
+        if (!empty($activeType)) {
+            $postQuery->where('type', $activeType);
+        }
+        $posts = $postQuery->get();
+
+        // Dynamic categories from database
+        $topicStats = Post::select('type', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+            ->whereNotNull('type')
+            ->where('type', '!=', '')
+            ->groupBy('type')
+            ->orderByDesc('total')
+            ->get();
+
+        $communityStats = [
+            'total_users' => User::count(),
+            'total_posts' => Post::count(),
+            'total_stories' => Story::where('expires_at', '>', now())->count(),
+        ];
+
         $suggestedUsers = $authUser ? User::where('id', '!=', $authUser->id)->take(4)->get() : User::take(4)->get();
 
         $datakonten['judulcore'] = $this->title;
@@ -92,6 +124,9 @@ class KomunitasController extends Controller
         $datakonten['parameterdata'] = "";
         $datakonten['user'] = $user;
         $datakonten['myCommunities'] = $myCommunities;
+        $datakonten['topicStats'] = $topicStats;
+        $datakonten['activeType'] = $activeType;
+        $datakonten['communityStats'] = $communityStats;
         $datakonten['myStories'] = $myStories;
         $datakonten['otherStoryGroups'] = $otherStoryGroups;
         $datakonten['storyViewerData'] = $storyViewerData;

@@ -14,87 +14,124 @@
 @endphp
 
 <div class="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_320px]">
-    <!-- LEFT ASIDE: Mini Instagram Profile & Communities -->
+    <!-- LEFT ASIDE: Elegant Community Hub -->
     <aside class="hidden space-y-4 xl:block">
+        @php
+            $totalPostsForBar = max($communityStats['total_posts'] ?? 1, 1);
+        @endphp
+
+        <!-- Trending Topik — Elegant Progress Bar Style -->
         <section class="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
-            <a href="{{ route('profile') }}" class="group block">
-                <div class="flex items-center gap-3">
-                    <div class="relative">
-                        @if ($authUser && $authUser->avatar)
-                            <img src="{{ $authUser->avatar }}" class="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-[#4154e8]/20 group-hover:ring-[#4154e8] transition">
-                        @else
-                            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#4154e8] text-white text-lg font-black shadow-sm ring-2 ring-[#4154e8]/20 select-none group-hover:ring-[#4154e8] transition">
-                                {{ $userInitials }}
-                            </div>
-                        @endif
-                        @if ($authUser && $authUser->note)
-                            <span class="absolute -top-2 left-1/2 -translate-x-1/2 rounded-lg bg-white px-1.5 py-0.5 text-[8px] font-bold text-slate-700 shadow border border-slate-200 truncate max-w-[80px]">
-                                {{ $authUser->note }}
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-xs font-extrabold tracking-widest text-slate-400 uppercase">Trending Topik</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Berdasarkan postingan warga</p>
+                </div>
+                @if(!empty($activeType))
+                    <a href="{{ route('customer.komunitas.list') }}"
+                       class="rounded-xl bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-[#4154e8] hover:bg-indigo-100 transition">
+                        Reset
+                    </a>
+                @endif
+            </div>
+
+            <div class="space-y-3">
+                @php
+                    $barColors = [
+                        ['bar' => 'bg-[#4154e8]', 'badge' => 'bg-indigo-50 text-[#4154e8]'],
+                        ['bar' => 'bg-violet-500', 'badge' => 'bg-violet-50 text-violet-600'],
+                        ['bar' => 'bg-sky-500', 'badge' => 'bg-sky-50 text-sky-600'],
+                        ['bar' => 'bg-emerald-500', 'badge' => 'bg-emerald-50 text-emerald-600'],
+                        ['bar' => 'bg-amber-500', 'badge' => 'bg-amber-50 text-amber-600'],
+                    ];
+                    $topicIndex = 0;
+                @endphp
+
+                <!-- All Posts row -->
+                @php
+                    $allPct = 100;
+                    $isAllActive = empty($activeType);
+                @endphp
+                <a href="{{ route('customer.komunitas.list') }}"
+                   class="group block rounded-2xl {{ $isAllActive ? 'bg-indigo-50/80 border border-indigo-200/60' : 'hover:bg-slate-50' }} px-3 py-2.5 transition">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs font-bold {{ $isAllActive ? 'text-[#4154e8]' : 'text-slate-700 group-hover:text-[#4154e8]' }} transition truncate max-w-[130px]">
+                            Semua Postingan
+                        </span>
+                        <span class="rounded-full px-2 py-0.5 text-[10px] font-extrabold {{ $isAllActive ? 'bg-[#4154e8] text-white' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $communityStats['total_posts'] ?? 0 }}
+                        </span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                        <div class="h-full rounded-full bg-[#4154e8] transition-all duration-500" style="width: 100%"></div>
+                    </div>
+                </a>
+
+                @forelse ($topicStats as $topic)
+                    @php
+                        $isCurrent = !empty($activeType) && $activeType === $topic->type;
+                        $pct = round(($topic->total / $totalPostsForBar) * 100);
+                        $pct = min($pct, 100);
+                        $color = $barColors[$topicIndex % count($barColors)];
+                        $topicIndex++;
+                        $label = str_starts_with($topic->type, '#') ? $topic->type : '#' . $topic->type;
+                    @endphp
+                    <a href="{{ route('customer.komunitas.list', ['type' => $topic->type]) }}"
+                       class="group block rounded-2xl {{ $isCurrent ? 'bg-indigo-50/80 border border-indigo-200/60' : 'hover:bg-slate-50' }} px-3 py-2.5 transition">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-semibold {{ $isCurrent ? 'text-[#4154e8]' : 'text-slate-700 group-hover:text-[#4154e8]' }} transition truncate max-w-[130px]">
+                                {{ $label }}
                             </span>
-                        @endif
+                            <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $isCurrent ? 'bg-[#4154e8] text-white' : $color['badge'] }}">
+                                {{ $topic->total }}
+                            </span>
+                        </div>
+                        <div class="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                            <div class="h-full rounded-full {{ $color['bar'] }} transition-all duration-500" style="width: {{ $pct }}%"></div>
+                        </div>
+                    </a>
+                @empty
+                    <div class="text-center py-4">
+                        <p class="text-xs text-slate-400">Belum ada topik.</p>
+                        <p class="text-[11px] text-slate-300 mt-1">Buat postingan pertamamu!</p>
                     </div>
-                    <div class="min-w-0">
-                        <p class="font-extrabold leading-tight text-slate-900 group-hover:text-[#4154e8] transition truncate">
-                            {{ $authUser->name ?? 'User' }}
-                        </p>
-                        <p class="text-xs text-slate-400 truncate">{{ $authUser->username ? '@' . $authUser->username : 'Customer' }}</p>
-                    </div>
-                </div>
-
-                <div class="mt-5 grid grid-cols-3 gap-1 text-center border-t border-slate-100 pt-3">
-                    <div>
-                        <p class="text-base font-extrabold text-slate-900">{{ $postsCount }}</p>
-                        <p class="text-[10px] text-slate-400 font-semibold">Post</p>
-                    </div>
-                    <div>
-                        <p class="text-base font-extrabold text-slate-900">{{ $followersCount }}</p>
-                        <p class="text-[10px] text-slate-400 font-semibold">Followers</p>
-                    </div>
-                    <div>
-                        <p class="text-base font-extrabold text-slate-900">{{ $followingCount }}</p>
-                        <p class="text-[10px] text-slate-400 font-semibold">Following</p>
-                    </div>
-                </div>
-            </a>
-
-            <div class="mt-4 pt-3 border-t border-slate-100 flex gap-2">
-                <a href="{{ route('profile') }}" class="flex-1 rounded-xl bg-slate-100 hover:bg-slate-200 py-2 text-center text-xs font-bold text-slate-700 transition">
-                    Lihat Profil
-                </a>
-                <a href="{{ route('chat') }}" class="rounded-xl bg-[#4154e8] hover:bg-[#3243d4] p-2 text-white transition" title="Buka Chat DM">
-                    @include('partials.icons', ['name' => 'mail', 'class' => 'h-4 w-4'])
-                </a>
+                @endforelse
             </div>
         </section>
 
-        <!-- Direct Chat Quick Access Banner -->
-        <a href="{{ route('chat') }}" class="flex items-center justify-between rounded-[28px] border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 text-slate-800 shadow-[0_12px_30px_rgba(76,84,210,0.08)] transition hover:scale-[1.02] active:scale-[0.98]">
-            <div class="flex items-center gap-3">
-                <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#4154e8] text-white">
-                    @include('partials.icons', ['name' => 'mail', 'class' => 'h-5 w-5'])
-                </span>
-                <div>
-                    <h4 class="text-xs font-extrabold">Chat Komunitas</h4>
-                    <p class="text-[10px] text-slate-500">Direct Messages tetangga</p>
-                </div>
-            </div>
-            <span class="text-[#4154e8] text-sm font-bold">&rarr;</span>
-        </a>
-
-        <section class="rounded-[28px] bg-white p-5 text-sm shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
-            <p class="mb-3 text-xs font-extrabold tracking-wide text-slate-400 uppercase">Komunitasmu</p>
-            <div class="space-y-2">
-                @foreach ($myCommunities as $comm)
-                    <div class="flex items-center gap-3 rounded-2xl border {{ $comm['color'] }} px-3 py-2.5 font-semibold">
-                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl {{ $comm['iconBg'] }}">
-                            @include('partials.icons', ['name' => $comm['icon'], 'class' => 'h-4 w-4'])
-                        </span>
-                        <div class="min-w-0">
-                            <p class="truncate text-xs font-bold">{{ $comm['name'] }}</p>
-                            <p class="text-[10px] opacity-70">{{ $comm['members'] }}</p>
-                        </div>
+        <!-- Dynamic Community Stats -->
+        <section class="rounded-[28px] bg-white p-5 shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
+            <p class="mb-4 text-xs font-extrabold tracking-widest text-slate-400 uppercase">Statistik Komunitas</p>
+            <div class="space-y-3.5">
+                <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-[#4154e8]">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-5-4M9 20H4v-2a4 4 0 015-4m4 4a4 4 0 100-8 4 4 0 000 8z"/></svg>
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-[11px] text-slate-400 font-medium">Warga Bergabung</p>
+                        <p class="text-sm font-extrabold text-slate-900 leading-tight">{{ number_format($communityStats['total_users'] ?? 0) }} <span class="text-xs font-semibold text-slate-400">orang</span></p>
                     </div>
-                @endforeach
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-500">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-[11px] text-slate-400 font-medium">Postingan Terbit</p>
+                        <p class="text-sm font-extrabold text-slate-900 leading-tight">{{ number_format($communityStats['total_posts'] ?? 0) }} <span class="text-xs font-semibold text-slate-400">post</span></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-[11px] text-slate-400 font-medium">Cerita Aktif (24j)</p>
+                        <p class="text-sm font-extrabold {{ ($communityStats['total_stories'] ?? 0) > 0 ? 'text-emerald-600' : 'text-slate-900' }} leading-tight">{{ number_format($communityStats['total_stories'] ?? 0) }} <span class="text-xs font-semibold text-slate-400">aktif</span></p>
+                    </div>
+                </div>
             </div>
         </section>
     </aside>
@@ -111,19 +148,32 @@
         <!-- Stories (Instagram Style) -->
         <section class="rounded-[28px] bg-white p-4 shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
             <div class="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
-                @php $myActiveStory = $myStories->first(); @endphp
+                @php
+                    $myActiveStory = $myStories->first();
+                    $myStoryIds = $myStories->pluck('id')->all();
+                @endphp
                 <div class="relative flex w-16 shrink-0 flex-col items-center gap-2 group">
-                    <button type="button" @if ($myActiveStory) onclick="openStory({{ $storyViewerData->search(fn ($item) => $item['id'] === $myActiveStory->id) }})" @else onclick="openStoryComposer()" @endif
-                            class="rounded-full p-[2.5px] ring-2 {{ $myActiveStory ? 'ring-rose-500 ring-offset-2' : 'ring-slate-200' }} transition group-hover:scale-105">
-                        @if ($myActiveStory)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($myActiveStory->image) }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
-                        @elseif ($authUser->avatar)
-                            <img src="{{ $authUser->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
-                        @else
-                            <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
-                                {{ $userInitials }}
-                            </span>
-                        @endif
+                    <button type="button"
+                            @if ($myActiveStory)
+                                onclick="openStory({{ $storyViewerData->search(fn ($item) => $item['id'] === $myActiveStory->id) }})"
+                                data-story-user-id="{{ $authUser->id }}"
+                                data-story-ids="{{ json_encode($myStoryIds) }}"
+                            @else
+                                onclick="openStoryComposer()"
+                            @endif
+                            class="story-user-btn rounded-full p-[2.5px] transition group-hover:scale-105">
+                        <span id="story-ring-{{ $authUser->id }}"
+                              class="story-ring block rounded-full p-[2px] ring-2 {{ $myActiveStory ? 'ring-rose-500 ring-offset-2' : 'ring-slate-200' }} transition">
+                            @if ($myActiveStory)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($myActiveStory->image) }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                            @elseif ($authUser->avatar)
+                                <img src="{{ $authUser->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                            @else
+                                <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
+                                    {{ $userInitials }}
+                                </span>
+                            @endif
+                        </span>
                     </button>
                     <button type="button" onclick="openStoryComposer()" class="absolute bottom-5 right-0 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-white" aria-label="Tambah cerita">
                         @include('partials.icons', ['name' => 'plus', 'class' => 'h-3 w-3'])
@@ -135,9 +185,15 @@
                     @php
                         $firstStory = $userStories->first();
                         $storyIndex = $storyViewerData->search(fn ($item) => $item['id'] === $firstStory->id);
+                        $storyIdsList = $userStories->pluck('id')->all();
                     @endphp
-                    <button type="button" onclick="openStory({{ $storyIndex }})" class="flex w-16 shrink-0 flex-col items-center gap-2 group">
-                        <span class="rounded-full p-[2.5px] ring-2 ring-rose-500 ring-offset-2 transition group-hover:scale-105">
+                    <button type="button"
+                            onclick="openStory({{ $storyIndex }})"
+                            data-story-user-id="{{ $firstStory->user->id }}"
+                            data-story-ids="{{ json_encode($storyIdsList) }}"
+                            class="story-user-btn flex w-16 shrink-0 flex-col items-center gap-2 group">
+                        <span id="story-ring-{{ $firstStory->user->id }}"
+                              class="story-ring rounded-full p-[2.5px] ring-2 ring-rose-500 ring-offset-2 transition group-hover:scale-105">
                             @if ($firstStory->user->avatar)
                                 <img src="{{ $firstStory->user->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
                             @else
@@ -152,29 +208,17 @@
             </div>
         </section>
 
-        <!-- Share Input Box -->
-        <section class="rounded-[28px] bg-white p-4 shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
-            <div class="flex items-center gap-3">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#4154e8] text-white text-xs font-black shadow-sm select-none">
-                    {{ $userInitials }}
+        @if(!empty($activeType))
+            <div class="flex items-center justify-between rounded-2xl bg-indigo-50 border border-indigo-100 px-4 py-3 text-xs text-indigo-900 font-semibold shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-[#4154e8] text-white text-[11px] font-black">#</span>
+                    <span>Menampilkan topik: <strong class="font-extrabold text-[#4154e8]">{{ $activeType }}</strong> ({{ $posts->count() }} postingan)</span>
                 </div>
-                <input onclick="openCreatePostModal()" class="w-full rounded-full bg-[#f4f6ff] px-4 py-3 text-sm text-slate-500 cursor-pointer" value="Bagikan sesi, hemat, atau momen bareng..." readonly>
-            </div>
-            <div class="mt-3 flex gap-2 text-xs font-bold text-[#4c54d2]">
-                <button type="button" onclick="openCreatePostModal()" class="flex items-center gap-1.5 rounded-full bg-[#eef2fb] px-3 py-1.5 hover:bg-[#e0e7ff] transition">
-                    @include('partials.icons', ['name' => 'camera', 'class' => 'h-3.5 w-3.5'])
-                    Foto
-                </button>
-                <a href="{{ route('sesi') }}" class="flex items-center gap-1.5 rounded-full bg-[#eef2fb] px-3 py-1.5 hover:bg-[#e0e7ff] transition">
-                    @include('partials.icons', ['name' => 'schedule', 'class' => 'h-3.5 w-3.5'])
-                    Sesi
-                </a>
-                <a href="{{ route('chat') }}" class="flex items-center gap-1.5 rounded-full bg-[#eef2fb] px-3 py-1.5 hover:bg-[#e0e7ff] transition">
-                    @include('partials.icons', ['name' => 'mail', 'class' => 'h-3.5 w-3.5'])
-                    Chat Warga
+                <a href="{{ route('customer.komunitas.list') }}" class="rounded-xl bg-white px-2.5 py-1 text-[11px] font-extrabold text-slate-600 hover:text-slate-900 shadow-xs transition">
+                    Tampilkan Semua &times;
                 </a>
             </div>
-        </section>
+        @endif
 
         <!-- Posts Feed -->
         @forelse ($posts as $post)
@@ -190,7 +234,7 @@
                         @endif
                         <div>
                             <p class="font-extrabold text-sm text-slate-900 leading-tight">{{ $post->user->username ? '@' . $post->user->username : $post->user->name }}</p>
-                            <p class="text-[11px] text-slate-400">{{ $post->user->role }} · {{ $post->created_at->diffForHumans() }}</p>
+                            <p class="text-[11px] text-slate-400">{{ $post->user->role }} Â· {{ $post->created_at->diffForHumans() }}</p>
                         </div>
                     </div>
 
@@ -291,7 +335,7 @@
                             <a href="{{ route('profile.show', $person->username ?? $person->id) }}" class="truncate text-xs font-bold text-slate-900 hover:underline block leading-tight">
                                 {{ $person->username ? '@' . $person->username : $person->name }}
                             </a>
-                            <p class="text-[10px] leading-4 text-slate-400 truncate">{{ $person->name }} · {{ $person->location }}</p>
+                            <p class="text-[10px] leading-4 text-slate-400 truncate">{{ $person->name }} Â· {{ $person->location }}</p>
                             <button type="button"
                                     onclick="toggleFollowSide({{ $person->id }}, this)"
                                     class="mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm {{ $isFollowed ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#4154e8] text-white hover:bg-[#3243d4]' }}">
@@ -308,7 +352,7 @@
             <h2 class="text-sm font-extrabold text-slate-900">Sesi yang lagi ramai</h2>
             <div class="mt-4 space-y-3">
                 @foreach ([
-                    ['title' => 'Warung Geprek 88', 'sub' => '4/5 orang · tutup 20 menit lagi', 'icon' => 'food', 'iconBg' => 'bg-orange-50 text-orange-500'],
+                    ['title' => 'Warung Geprek 88', 'sub' => '4/5 orang Â· tutup 20 menit lagi', 'icon' => 'food', 'iconBg' => 'bg-orange-50 text-orange-500'],
                     ['title' => 'Alfamart Cluster 2', 'sub' => 'Kurang Rp 35rb ke minimum', 'icon' => 'cart', 'iconBg' => 'bg-emerald-50 text-emerald-500'],
                     ['title' => 'Kirim arah UI Depok', 'sub' => '2 paket, muat 1 lagi', 'icon' => 'truck', 'iconBg' => 'bg-blue-50 text-blue-500'],
                 ] as $sess)
@@ -351,28 +395,153 @@
     </div>
 </div>
 
-<div id="story-viewer" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 p-3 sm:p-8" role="dialog" aria-modal="true" aria-label="Lihat cerita">
-    <button type="button" onclick="closeStoryViewer()" class="absolute right-4 top-4 rounded-full bg-white/15 p-3 text-white hover:bg-white/25" aria-label="Tutup">@include('partials.icons', ['name' => 'close', 'class' => 'h-5 w-5'])</button>
-    <button type="button" onclick="changeStory(-1)" class="absolute left-3 top-1/2 rounded-full bg-white/15 px-3 py-2 text-white hover:bg-white/25 sm:left-8" aria-label="Cerita sebelumnya">‹</button>
-    <article class="relative flex h-[min(82vh,760px)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
-        <img id="story-viewer-image" src="" alt="Cerita warga" class="absolute inset-0 h-full w-full object-contain">
-        <div class="relative z-10 flex items-start justify-between bg-gradient-to-b from-black/60 to-transparent p-4 text-white">
-            <div>
-                <p id="story-viewer-name" class="text-sm font-extrabold"></p>
-                <p id="story-viewer-time" class="text-xs text-white/75"></p>
+<!-- INSTAGRAM-STYLE STORY VIEWER MODAL (DENGAN LOGO BARENG & FLANKING SIDE PREVIEWS) -->
+<div id="story-viewer" class="fixed inset-0 z-50 hidden flex-col items-center justify-center bg-[#111111]/95 backdrop-blur-md select-none p-2 sm:p-6" role="dialog" aria-modal="true" aria-label="Lihat cerita warga">
+
+    <!-- Top Left: Logo BARENG (putih bersih kontras) -->
+    <a href="{{ route('customer.komunitas.list') }}" class="absolute left-5 sm:left-8 top-5 z-40 flex items-center gap-2.5 opacity-90 hover:opacity-100 transition" title="Komunitas BARENG">
+        <img src="{{ asset('images/bareng-logo.svg') }}" alt="BARENG" class="h-7 sm:h-8 w-auto brightness-0 invert">
+    </a>
+
+    <!-- Top Right: Close Button -->
+    <button type="button" onclick="closeStoryViewer()"
+            class="absolute right-5 sm:right-8 top-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition backdrop-blur-md"
+            aria-label="Tutup cerita">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Main Stage: Side Prev Card + Active Card + Side Next Card -->
+    <div class="relative flex items-center justify-center gap-4 sm:gap-8 w-full max-w-6xl h-full py-4">
+
+        <!-- Left Prev Floating Arrow Button -->
+        <button type="button" id="story-prev-btn" onclick="changeStory(-1)"
+                class="hidden sm:flex z-30 h-11 w-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/35 text-white transition backdrop-blur-md shadow-lg shrink-0 cursor-pointer"
+                aria-label="Cerita sebelumnya">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </button>
+
+        <!-- Left Side Preview Card (Seperti di Instagram Web Desktop!) -->
+        <div id="story-prev-card" onclick="changeStory(-1)"
+             class="hidden xl:flex flex-col items-center justify-center relative w-44 h-[55vh] rounded-[26px] overflow-hidden cursor-pointer opacity-35 hover:opacity-75 transition-all duration-300 scale-90 border border-white/10 shadow-2xl bg-slate-900 group shrink-0">
+            <img id="story-prev-card-img" src="" class="absolute inset-0 h-full w-full object-cover blur-xs opacity-50 group-hover:scale-105 transition duration-500">
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="relative z-10 flex flex-col items-center text-center p-3">
+                <div class="rounded-full p-1 ring-2 ring-rose-500 mb-2">
+                    <img id="story-prev-card-avatar" src="" class="h-12 w-12 rounded-full object-cover">
+                </div>
+                <p id="story-prev-card-username" class="text-xs font-bold text-white truncate max-w-[120px]"></p>
+                <p id="story-prev-card-time" class="text-[10px] text-white/70"></p>
             </div>
-            <form id="story-highlight-form" method="POST" action="{{ route('stories.highlights.store') }}">
-                @csrf
-                <input type="hidden" name="title" value="Cerita">
-                <input id="story-highlight-id" type="hidden" name="story_ids[]" value="">
-                <button id="story-highlight-button" type="submit" class="hidden rounded-full bg-white/20 px-3 py-2 text-xs font-bold text-white backdrop-blur hover:bg-white/30">
-                    Tambahkan ke Sorotan
-                </button>
-            </form>
         </div>
-        <p id="story-viewer-caption" class="relative z-10 mt-auto bg-gradient-to-t from-black/70 to-transparent p-5 text-sm text-white"></p>
-    </article>
-    <button type="button" onclick="changeStory(1)" class="absolute right-3 top-1/2 rounded-full bg-white/15 px-3 py-2 text-white hover:bg-white/25 sm:right-8" aria-label="Cerita berikutnya">›</button>
+
+        <!-- Center Active Story Card (Primary Canvas) -->
+        <article id="story-active-card"
+                 class="relative flex h-[min(88vh,780px)] w-full max-w-[420px] flex-col overflow-hidden rounded-[30px] bg-black shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/15 shrink-0">
+
+            <!-- Segmented Progress Bars (Top) -->
+            <div id="story-progress-container" class="absolute top-3 inset-x-3.5 z-30 flex gap-1.5 pointer-events-none">
+                <!-- Dynamically rendered by JS -->
+            </div>
+
+            <!-- Active Story Header -->
+            <div class="absolute top-6 inset-x-3.5 z-30 flex items-center justify-between text-white drop-shadow-md">
+                <div class="flex items-center gap-2.5">
+                    <img id="story-viewer-avatar" src="" alt="" class="h-9 w-9 rounded-full object-cover ring-2 ring-white/50">
+                    <div class="flex items-center gap-2 leading-tight">
+                        <span id="story-viewer-name" class="text-xs font-extrabold text-white hover:underline cursor-pointer"></span>
+                        <span class="text-white/40 text-xs">·</span>
+                        <span id="story-viewer-time" class="text-[11px] text-white/80 font-medium"></span>
+                    </div>
+                </div>
+
+                <!-- Action Controls: Pause, Highlight -->
+                <div class="flex items-center gap-1.5">
+                    <button type="button" id="story-pause-btn" onclick="toggleStoryPause()"
+                            class="p-1.5 rounded-full hover:bg-white/20 text-white transition" title="Jeda/Lanjut">
+                        <svg id="story-pause-icon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                    </button>
+
+                    <form id="story-highlight-form" method="POST" action="{{ route('stories.highlights.store') }}">
+                        @csrf
+                        <input type="hidden" name="title" value="Cerita">
+                        <input id="story-highlight-id" type="hidden" name="story_ids[]" value="">
+                        <button id="story-highlight-button" type="submit"
+                                class="hidden rounded-full bg-white/20 hover:bg-white/30 px-2.5 py-1 text-[11px] font-bold text-white transition backdrop-blur-md">
+                            Sorotan
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Main Story Image -->
+            <img id="story-viewer-image" src="" alt="Cerita warga" class="absolute inset-0 h-full w-full object-cover select-none">
+
+            <!-- Click Navigation Touch Zones -->
+            <div class="absolute inset-0 z-10 flex" id="story-touch-zones">
+                <div class="w-1/3 h-full cursor-pointer" onclick="changeStory(-1)" title="Cerita sebelumnya"></div>
+                <div class="w-2/3 h-full cursor-pointer" onclick="changeStory(1)" title="Cerita berikutnya"></div>
+            </div>
+
+            <!-- Bottom Gradient Overlay & Caption -->
+            <div class="relative z-20 mt-auto bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 pb-2 text-white pointer-events-none">
+                <p id="story-viewer-caption" class="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap drop-shadow pointer-events-auto"></p>
+            </div>
+
+            <!-- Bottom Reply & Reaction Bar (Instagram Style) -->
+            <div class="relative z-20 px-3.5 pb-4 pt-1 flex items-center gap-2 bg-black/60 backdrop-blur-xs">
+                <div class="relative flex-1">
+                    <input type="text" id="story-reply-input"
+                           placeholder="Kirim pesan balasan..."
+                           onkeydown="if(event.key === 'Enter') sendStoryReply()"
+                           class="w-full rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs text-white placeholder:text-white/60 outline-none focus:border-white focus:bg-white/20 transition">
+                </div>
+                <button type="button" onclick="sendStoryReply()"
+                        class="p-2 text-white hover:text-[#4154e8] transition" title="Kirim balasan">
+                    @include('partials.icons', ['name' => 'send', 'class' => 'h-4 w-4'])
+                </button>
+                <button type="button" onclick="triggerStoryHeart()"
+                        class="p-2 text-white hover:text-rose-500 transition group" title="Beri reaksi suka">
+                    <svg class="h-5 w-5 group-hover:scale-125 transition text-rose-500 fill-rose-500" viewBox="0 0 24 24">
+                        <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Floating Hearts Container (Animated Reactions) -->
+            <div id="story-floating-hearts" class="absolute inset-0 pointer-events-none overflow-hidden z-40"></div>
+        </article>
+
+        <!-- Right Side Preview Card (Seperti di Instagram Web Desktop!) -->
+        <div id="story-next-card" onclick="changeStory(1)"
+             class="hidden xl:flex flex-col items-center justify-center relative w-44 h-[55vh] rounded-[26px] overflow-hidden cursor-pointer opacity-35 hover:opacity-75 transition-all duration-300 scale-90 border border-white/10 shadow-2xl bg-slate-900 group shrink-0">
+            <img id="story-next-card-img" src="" class="absolute inset-0 h-full w-full object-cover blur-xs opacity-50 group-hover:scale-105 transition duration-500">
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="relative z-10 flex flex-col items-center text-center p-3">
+                <div class="rounded-full p-1 ring-2 ring-rose-500 mb-2">
+                    <img id="story-next-card-avatar" src="" class="h-12 w-12 rounded-full object-cover">
+                </div>
+                <p id="story-next-card-username" class="text-xs font-bold text-white truncate max-w-[120px]"></p>
+                <p id="story-next-card-time" class="text-[10px] text-white/70"></p>
+            </div>
+        </div>
+
+        <!-- Right Next Floating Arrow Button -->
+        <button type="button" id="story-next-btn" onclick="changeStory(1)"
+                class="hidden sm:flex z-30 h-11 w-11 items-center justify-center rounded-full bg-white/20 hover:bg-white/35 text-white transition backdrop-blur-md shadow-lg shrink-0 cursor-pointer"
+                aria-label="Cerita berikutnya">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
+    </div>
 </div>
 
 <!-- THREADS / X STYLE COMMENTS MODAL -->
@@ -405,7 +574,7 @@
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span id="modal-post-author-name" class="text-xs font-extrabold text-slate-900 leading-tight"></span>
                             <span id="modal-post-author-handle" class="text-xs font-medium text-slate-400"></span>
-                            <span class="text-slate-300">·</span>
+                            <span class="text-slate-300">Â·</span>
                             <span id="modal-post-time" class="text-xs text-slate-400 font-medium"></span>
                         </div>
                         <p id="modal-post-caption" class="text-xs sm:text-sm text-slate-800 mt-1 leading-relaxed whitespace-pre-wrap"></p>
@@ -626,7 +795,7 @@ function renderCommentItem(c, isReply = false) {
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-xs font-extrabold text-slate-900 leading-tight">${c.user_name}</span>
                                 <span class="text-[11px] text-slate-400 font-medium">@${c.user_username}</span>
-                                <span class="text-slate-300">·</span>
+                                <span class="text-slate-300">Â·</span>
                                 <span class="text-[10px] text-slate-400 font-medium">${c.created_at}</span>
                             </div>
                             ${c.can_delete ? `
@@ -757,8 +926,65 @@ function deleteComment(commentId) {
         alert('Terjadi kesalahan saat menghapus komentar.');
     });
 }
+// ══════════════════════════════════════════════════════════════════════════
+// INSTAGRAM-STYLE STORY VIEWER ENGINE (WITH LOGO BARENG & PROGRESS BARS)
+// ══════════════════════════════════════════════════════════════════════════
 const storyViewerItems = @json($storyViewerData->values());
 let activeStoryIndex = 0;
+let storyProgressInterval = null;
+let storyProgressStartTime = 0;
+let storyDurationMs = 5000;
+let storyPausedProgress = 0;
+let isStoryPaused = false;
+
+// ─── TRACKING CERITA YANG SUDAH DILIHAT (BORDER ABU-ABU) ─────────────────
+function getViewedStoryIds() {
+    try {
+        return JSON.parse(localStorage.getItem('bareng_viewed_stories') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function markStoryAsViewed(storyId) {
+    if (!storyId) return;
+    let viewed = getViewedStoryIds();
+    if (!viewed.includes(storyId)) {
+        viewed.push(storyId);
+        try {
+            localStorage.setItem('bareng_viewed_stories', JSON.stringify(viewed));
+        } catch (e) {}
+    }
+    updateAllStoryRings();
+}
+
+function updateAllStoryRings() {
+    const viewed = getViewedStoryIds();
+    document.querySelectorAll('.story-user-btn').forEach(btn => {
+        const rawIds = btn.getAttribute('data-story-ids');
+        const userId = btn.getAttribute('data-story-user-id');
+        if (!rawIds || !userId) return;
+
+        try {
+            const storyIds = JSON.parse(rawIds);
+            const ringEl = document.getElementById('story-ring-' + userId);
+            if (!ringEl || !Array.isArray(storyIds) || storyIds.length === 0) return;
+
+            // Cek apakah SEMUA cerita user ini sudah pernah dilihat
+            const allSeen = storyIds.every(id => viewed.includes(id));
+
+            if (allSeen) {
+                // Borderline menjadi ABU-ABU
+                ringEl.classList.remove('ring-rose-500');
+                ringEl.classList.add('ring-slate-300', 'ring-offset-1', 'opacity-70');
+            } else {
+                // Borderline tetap gradien / rose
+                ringEl.classList.remove('ring-slate-300', 'opacity-70');
+                ringEl.classList.add('ring-rose-500');
+            }
+        } catch (e) {}
+    });
+}
 
 function openStoryComposer() {
     document.getElementById('story-composer').classList.replace('hidden', 'flex');
@@ -773,23 +999,246 @@ function openStory(index) {
 
     activeStoryIndex = index;
     const story = storyViewerItems[index];
-    document.getElementById('story-viewer-image').src = story.image;
+
+    // Tandai cerita saat ini sebagai telah dilihat & update border abu-abu
+    markStoryAsViewed(story.id);
+
+    // Populate active card
+    const imgEl = document.getElementById('story-viewer-image');
+    imgEl.src = story.image;
+
+    const avatarEl = document.getElementById('story-viewer-avatar');
+    if (story.user_avatar) {
+        avatarEl.src = story.user_avatar;
+        avatarEl.classList.remove('hidden');
+    } else {
+        avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(story.name)}&background=4154e8&color=fff&bold=true`;
+    }
+
     document.getElementById('story-viewer-name').textContent = story.username ? '@' + story.username : story.name;
     document.getElementById('story-viewer-time').textContent = story.created_at;
     document.getElementById('story-viewer-caption').textContent = story.caption || '';
     document.getElementById('story-highlight-id').value = story.id;
     document.getElementById('story-highlight-button').classList.toggle('hidden', !story.is_own || story.is_highlighted);
-    document.getElementById('story-viewer').classList.replace('hidden', 'flex');
+
+    const replyInput = document.getElementById('story-reply-input');
+    if (replyInput) {
+        replyInput.value = '';
+        replyInput.placeholder = `Kirim balasan ke @${story.username || story.name}...`;
+    }
+
+    // Render Segmented Progress Bars
+    renderStoryProgressBars(story);
+
+    // Update Flanking Side Preview Cards (Instagram style preview kiri dan kanan)
+    updateSidePreviewCards(index);
+
+    // Show modal & start timer
+    const modal = document.getElementById('story-viewer');
+    modal.classList.replace('hidden', 'flex');
+    document.body.style.overflow = 'hidden';
+
+    startStoryTimer();
+}
+
+function renderStoryProgressBars(currentStory) {
+    const container = document.getElementById('story-progress-container');
+    if (!container) return;
+
+    const totalBars = currentStory.user_stories_total || 1;
+    const currentIndex = currentStory.user_story_index || 0;
+
+    let barsHtml = '';
+    for (let i = 0; i < totalBars; i++) {
+        let innerStyle = 'width: 0%';
+        if (i < currentIndex) {
+            innerStyle = 'width: 100%';
+        }
+        barsHtml += `
+            <div class="h-1 flex-1 rounded-full bg-white/25 overflow-hidden">
+                <div id="story-progress-bar-${i}" class="h-full bg-white rounded-full transition-all duration-75" style="${innerStyle}"></div>
+            </div>`;
+    }
+    container.innerHTML = barsHtml;
+}
+
+function startStoryTimer() {
+    clearInterval(storyProgressInterval);
+    isStoryPaused = false;
+    storyPausedProgress = 0;
+    updatePauseIcon(false);
+
+    const story = storyViewerItems[activeStoryIndex];
+    const currentIndex = story ? (story.user_story_index || 0) : 0;
+    const currentBar = document.getElementById(`story-progress-bar-${currentIndex}`);
+
+    storyProgressStartTime = Date.now();
+
+    storyProgressInterval = setInterval(() => {
+        if (isStoryPaused) return;
+
+        const elapsed = Date.now() - storyProgressStartTime;
+        const pct = Math.min((elapsed / storyDurationMs) * 100, 100);
+
+        if (currentBar) {
+            currentBar.style.width = pct + '%';
+        }
+
+        if (elapsed >= storyDurationMs) {
+            clearInterval(storyProgressInterval);
+            // Selesai -> lanjut ke cerita berikutnya
+            changeStory(1);
+        }
+    }, 50);
+}
+
+function toggleStoryPause() {
+    isStoryPaused = !isStoryPaused;
+    if (isStoryPaused) {
+        storyPausedProgress = Date.now() - storyProgressStartTime;
+    } else {
+        storyProgressStartTime = Date.now() - storyPausedProgress;
+    }
+    updatePauseIcon(isStoryPaused);
+}
+
+function updatePauseIcon(paused) {
+    const icon = document.getElementById('story-pause-icon');
+    if (!icon) return;
+    if (paused) {
+        icon.innerHTML = `<polygon points="5 3 19 12 5 21 5 3" fill="currentColor"></polygon>`;
+    } else {
+        icon.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+    }
+}
+
+function updateSidePreviewCards(index) {
+    const prevCard = document.getElementById('story-prev-card');
+    const nextCard = document.getElementById('story-next-card');
+
+    // Prev card
+    if (index > 0 && storyViewerItems[index - 1]) {
+        const pStory = storyViewerItems[index - 1];
+        document.getElementById('story-prev-card-img').src = pStory.image;
+        document.getElementById('story-prev-card-avatar').src = pStory.user_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(pStory.name)}&background=4154e8&color=fff`;
+        document.getElementById('story-prev-card-username').textContent = '@' + (pStory.username || pStory.name);
+        document.getElementById('story-prev-card-time').textContent = pStory.created_at;
+        prevCard.classList.remove('invisible');
+    } else {
+        prevCard.classList.add('invisible');
+    }
+
+    // Next card
+    if (index < storyViewerItems.length - 1 && storyViewerItems[index + 1]) {
+        const nStory = storyViewerItems[index + 1];
+        document.getElementById('story-next-card-img').src = nStory.image;
+        document.getElementById('story-next-card-avatar').src = nStory.user_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nStory.name)}&background=4154e8&color=fff`;
+        document.getElementById('story-next-card-username').textContent = '@' + (nStory.username || nStory.name);
+        document.getElementById('story-next-card-time').textContent = nStory.created_at;
+        nextCard.classList.remove('invisible');
+    } else {
+        nextCard.classList.add('invisible');
+    }
 }
 
 function closeStoryViewer() {
-    document.getElementById('story-viewer').classList.replace('flex', 'hidden');
+    clearInterval(storyProgressInterval);
+    const modal = document.getElementById('story-viewer');
+    modal.classList.replace('flex', 'hidden');
+    document.body.style.overflow = '';
 }
 
 function changeStory(direction) {
     if (!storyViewerItems.length) return;
-    openStory((activeStoryIndex + direction + storyViewerItems.length) % storyViewerItems.length);
+
+    const nextIndex = activeStoryIndex + direction;
+    if (nextIndex >= 0 && nextIndex < storyViewerItems.length) {
+        openStory(nextIndex);
+    } else if (nextIndex >= storyViewerItems.length) {
+        // Semua cerita sudah selesai dilihat!
+        closeStoryViewer();
+    }
 }
+
+// Balas Cerita ke Obrolan DM
+function sendStoryReply() {
+    const input = document.getElementById('story-reply-input');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+
+    const story = storyViewerItems[activeStoryIndex];
+    if (!story || !story.user_id) return;
+
+    fetch('{{ route("chat.send") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            receiver_id: story.user_id,
+            message: `Membalas cerita: "${text}"`,
+            media_url: story.image
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            showStoryToast('Balasan terkirim ke obrolan warga!');
+            triggerStoryHeart();
+        }
+    })
+    .catch(() => {
+        showStoryToast('Gagal mengirim balasan.');
+    });
+}
+
+function triggerStoryHeart() {
+    const container = document.getElementById('story-floating-hearts');
+    if (!container) return;
+
+    for (let i = 0; i < 4; i++) {
+        setTimeout(() => {
+            const heart = document.createElement('div');
+            heart.className = 'absolute text-rose-500 pointer-events-none animate-float-heart';
+            heart.style.left = (35 + Math.random() * 30) + '%';
+            heart.style.bottom = '20px';
+            heart.innerHTML = `
+                <svg class="h-9 w-9 fill-rose-500 drop-shadow-lg" viewBox="0 0 24 24">
+                    <path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>`;
+            container.appendChild(heart);
+            setTimeout(() => heart.remove(), 1200);
+        }, i * 150);
+    }
+}
+
+function showStoryToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-2xl bg-black/80 px-4 py-2 text-xs font-bold text-white shadow-xl backdrop-blur-md animate-fade-in';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+}
+
+// Keyboard shortcuts (ArrowLeft, ArrowRight, Escape, Space)
+window.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('story-viewer');
+    if (modal && !modal.classList.contains('hidden')) {
+        if (e.key === 'ArrowRight') changeStory(1);
+        if (e.key === 'ArrowLeft') changeStory(-1);
+        if (e.key === 'Escape') closeStoryViewer();
+        if (e.key === ' ' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            toggleStoryPause();
+        }
+    }
+});
+
+// Update border cerita abu-abu saat pertama kali halaman dimuat
+window.addEventListener('DOMContentLoaded', updateAllStoryRings);
 
 function toggleFollowSide(userId, btn) {
     fetch('/users/' + userId + '/toggle-follow', {
@@ -815,3 +1264,4 @@ function toggleFollowSide(userId, btn) {
 }
 </script>
 @endsection
+
