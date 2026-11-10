@@ -234,11 +234,38 @@ class ProfileController extends Controller
         // Fallback placeholder image if none provided
         $primaryImage = !empty($storedImages) ? $storedImages[0] : '/images/placeholder-post.jpg';
 
+        $caption = trim($request->caption ?? '');
+        $type = $request->type ?? 'GOTONG ROYONG';
+
+        // Process custom tags (#)
+        $tags = $request->input('tags', []);
+        if (is_string($tags)) {
+            $tags = array_filter(array_map('trim', explode(',', $tags)));
+        }
+        if (is_array($tags) && !empty($tags)) {
+            $cleanTags = [];
+            foreach ($tags as $t) {
+                $t = trim($t);
+                if (!empty($t)) {
+                    $cleanTags[] = str_starts_with($t, '#') ? $t : '#' . $t;
+                }
+            }
+            if (!empty($cleanTags)) {
+                $type = $cleanTags[0]; // Primary tag becomes the type badge
+                // Append tags to caption if not already present
+                foreach ($cleanTags as $ct) {
+                    if (!str_contains($caption, $ct)) {
+                        $caption .= ($caption ? ' ' : '') . $ct;
+                    }
+                }
+            }
+        }
+
         $post = Post::create([
             'user_id' => $authUser->id,
             'image'   => $primaryImage,
-            'caption' => $request->caption ?? '',
-            'type'    => $request->type ?? 'GOTONG ROYONG',
+            'caption' => $caption,
+            'type'    => $type,
             'likes_count' => 0,
             'comments_count' => 0,
         ]);

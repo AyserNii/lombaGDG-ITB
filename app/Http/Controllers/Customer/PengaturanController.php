@@ -17,9 +17,19 @@ class PengaturanController extends Controller
             return redirect()->route('login');
         }
 
+        // Calculate profile completion percentage
+        $completion = 0;
+        if (!empty($user->name)) $completion += 20;
+        if (!empty($user->username)) $completion += 15;
+        if (!empty($user->headline)) $completion += 15;
+        if (!empty($user->avatar)) $completion += 20;
+        if (!empty($user->bio)) $completion += 15;
+        if (!empty($user->location) || !empty($user->phone)) $completion += 15;
+
         return view('customer.pengaturan.index', [
             'user' => $user->toArray(),
             'userModel' => $user,
+            'completion' => $completion,
         ]);
     }
 
@@ -30,8 +40,9 @@ class PengaturanController extends Controller
         $request->validate([
             'name' => 'required|string|max:100',
             'username' => 'nullable|string|max:50|unique:users,username,' . $user->id,
+            'headline' => 'nullable|string|max:150',
             'website' => 'nullable|string|max:200',
-            'bio' => 'nullable|string|max:300',
+            'bio' => 'nullable|string|max:500',
             'gender' => 'required|in:male,female,custom,prefer_not_to_say',
             'phone' => 'nullable|string|max:20',
             'location' => 'required|string|max:120',
@@ -49,6 +60,7 @@ class PengaturanController extends Controller
         if ($request->filled('username')) {
             $user->username = strtolower(trim($request->username));
         }
+        $user->headline = $request->headline;
         $user->website = $request->website;
         $user->bio = $request->bio;
         $user->gender = $request->gender;

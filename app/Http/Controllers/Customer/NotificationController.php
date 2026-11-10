@@ -96,6 +96,7 @@ class NotificationController extends Controller
                     'actor_id'    => $actor ? $actor->id : null,
                     'actor_name'  => $actor ? $actor->name : null,
                     'actor_username' => $actor ? ($actor->username ?? 'user_' . $actor->id) : null,
+                    'actor_avatar' => $actor ? $actor->avatar : null,
                     'actor_initials' => $actor ? strtoupper(substr($actor->name, 0, 2)) : '??',
                     'post_image'  => $post ? $post->image : null,
                     'post_id'     => $post ? $post->id : null,

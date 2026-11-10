@@ -85,8 +85,7 @@ class ChatController extends Controller
             })->orderBy('created_at', 'asc')->get();
 
             // Mark received messages as read
-            Message::where('sender_id', $activeUser->id)
-                ->where('receiver_id', $authUser->id)
+            Message::where('receiver_id', $authUser->id)
                 ->where('is_read', false)
                 ->update(['is_read' => true]);
         }

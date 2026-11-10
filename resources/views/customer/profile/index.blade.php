@@ -232,7 +232,7 @@
             @else
                 <div class="grid grid-cols-3 gap-2 sm:gap-6">
                     @foreach ($savedPosts as $p)
-                        <div class="group relative aspect-square overflow-hidden rounded-2xl bg-slate-100 cursor-pointer shadow-sm">
+                        <div onclick="openPostDetailModal({{ $p->id }})" class="group relative aspect-square overflow-hidden rounded-2xl bg-slate-100 cursor-pointer shadow-sm">
                             <img src="{{ $p->image }}" alt="Saved Post" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                             <!-- Overlay on Hover (Persis Foto 1: Solid SVG Icons, Centered, White Drop-shadow) -->
                             <div class="absolute inset-0 flex items-center justify-center gap-6 bg-black/50 opacity-0 group-hover:opacity-100 transition duration-200 text-white select-none">
@@ -271,7 +271,7 @@
         @else
             <div class="grid grid-cols-3 gap-2 sm:gap-6">
                 @foreach ($posts as $post)
-                    <div class="group relative aspect-square overflow-hidden rounded-2xl bg-slate-100 cursor-pointer shadow-sm">
+                    <div onclick="openPostDetailModal({{ $post->id }})" class="group relative aspect-square overflow-hidden rounded-2xl bg-slate-100 cursor-pointer shadow-sm">
                         <img src="{{ $post->image }}" alt="{{ $post->caption }}" class="h-full w-full object-cover transition duration-300 group-hover:scale-105">
                         <!-- Overlay on Hover (Persis Foto 1: Solid SVG Icons, Centered, White Drop-shadow) -->
                         <div class="absolute inset-0 flex items-center justify-center gap-6 bg-black/50 opacity-0 group-hover:opacity-100 transition duration-200 text-white select-none">
@@ -532,7 +532,7 @@ function renderModalUsers(users) {
                 ${u.avatar ? `
                     <img src="${u.avatar}" class="h-10 w-10 rounded-full object-cover">
                 ` : `
-                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-white text-xs font-black">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-[#4154e8] text-white text-xs font-black">
                         ${u.initials}
                     </div>
                 `}

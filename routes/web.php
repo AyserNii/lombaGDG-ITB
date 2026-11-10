@@ -10,6 +10,7 @@ use App\Http\Controllers\Customer\ChatController as CustomerChat;
 use App\Http\Controllers\Customer\KomunitasController as CustomerKomunitas;
 use App\Http\Controllers\Customer\NotificationController as CustomerNotification;
 use App\Http\Controllers\Customer\PengaturanController as CustomerPengaturan;
+use App\Http\Controllers\Customer\PostController;
 use App\Http\Controllers\Customer\ProfileController as CustomerProfile;
 use App\Http\Controllers\Customer\SesiAktifController as CustomerSesiAktif;
 use App\Http\Controllers\Customer\StoryController as CustomerStory;
@@ -56,6 +57,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/users/{id}/following', [CustomerProfile::class, 'getFollowing'])->name('user.following');
     Route::post('/posts/{id}/toggle-save', [CustomerProfile::class, 'toggleSave'])->name('post.toggle-save');
     Route::post('/posts',                  [CustomerProfile::class, 'storePost'])->name('posts.store');
+    Route::get('/posts/{id}',              [PostController::class, 'show'])->name('posts.show');
+    Route::delete('/posts/{id}',           [PostController::class, 'destroy'])->name('posts.destroy');
+    Route::post('/posts/{id}/like',        [PostController::class, 'toggleLike'])->name('posts.like');
+    Route::get('/posts/{id}/comments',     [PostController::class, 'getComments'])->name('posts.comments');
+    Route::post('/posts/{id}/comments',    [PostController::class, 'storeComment'])->name('posts.comments.store');
+    Route::delete('/comments/{id}',        [PostController::class, 'destroyComment'])->name('comments.destroy');
 
     // Instagram-style Direct Message / Chat routes
     Route::get('/chat', [CustomerChat::class, 'index'])->name('chat');

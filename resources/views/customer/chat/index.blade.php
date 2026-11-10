@@ -49,7 +49,7 @@
                             @if ($authUser->avatar)
                                 <img src="{{ $authUser->avatar }}" class="h-13 w-13 rounded-full object-cover ring-2 ring-slate-200 mt-2">
                             @else
-                                <div class="flex h-13 w-13 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-white text-xs font-black ring-2 ring-slate-200 mt-2">
+                                <div class="flex h-13 w-13 items-center justify-center rounded-full bg-[#4154e8] text-white text-xs font-black ring-2 ring-slate-200 mt-2">
                                     {{ $authInitials }}
                                 </div>
                             @endif
@@ -96,7 +96,7 @@
                                 @if ($c['avatar'])
                                     <img src="{{ $c['avatar'] }}" alt="{{ $c['name'] }}" class="h-12 w-12 rounded-full object-cover">
                                 @else
-                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-white text-sm font-black">
+                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[#4154e8] text-white text-sm font-black">
                                         {{ $c['initials'] }}
                                     </div>
                                 @endif

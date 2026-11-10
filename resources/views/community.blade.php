@@ -23,7 +23,7 @@
                         @if ($authUser && $authUser->avatar)
                             <img src="{{ $authUser->avatar }}" class="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-[#4154e8]/20 group-hover:ring-[#4154e8] transition">
                         @else
-                            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-white text-lg font-black shadow-sm ring-2 ring-[#4154e8]/20 select-none group-hover:ring-[#4154e8] transition">
+                            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#4154e8] text-white text-lg font-black shadow-sm ring-2 ring-[#4154e8]/20 select-none group-hover:ring-[#4154e8] transition">
                                 {{ $userInitials }}
                             </div>
                         @endif
@@ -120,7 +120,7 @@
                         @elseif ($authUser->avatar)
                             <img src="{{ $authUser->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
                         @else
-                            <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-sm font-extrabold text-white">
+                            <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
                                 {{ $userInitials }}
                             </span>
                         @endif
@@ -141,7 +141,7 @@
                             @if ($firstStory->user->avatar)
                                 <img src="{{ $firstStory->user->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
                             @else
-                                <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-gradient-to-tr from-violet-500 to-[#4154e8] text-sm font-extrabold text-white">
+                                <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
                                     {{ strtoupper(mb_substr($firstStory->user->name, 0, 2)) }}
                                 </span>
                             @endif
@@ -155,7 +155,7 @@
         <!-- Share Input Box -->
         <section class="rounded-[28px] bg-white p-4 shadow-[0_12px_40px_rgba(76,84,210,0.08)] border border-slate-100">
             <div class="flex items-center gap-3">
-                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-white text-xs font-black shadow-sm select-none">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#4154e8] text-white text-xs font-black shadow-sm select-none">
                     {{ $userInitials }}
                 </div>
                 <input onclick="openCreatePostModal()" class="w-full rounded-full bg-[#f4f6ff] px-4 py-3 text-sm text-slate-500 cursor-pointer" value="Bagikan sesi, hemat, atau momen bareng..." readonly>
@@ -184,7 +184,7 @@
                         @if ($post->user->avatar)
                             <img src="{{ $post->user->avatar }}" alt="" class="h-11 w-11 rounded-full object-cover">
                         @else
-                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-[#3b49cf] to-[#5b72ff] text-xs font-black text-white shadow-sm select-none">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#4154e8] text-xs font-black text-white shadow-sm select-none">
                                 {{ strtoupper(mb_substr($post->user->name, 0, 2)) }}
                             </div>
                         @endif
@@ -200,34 +200,59 @@
                 </div>
 
                 @if ($post->image)
-                    <div class="aspect-video w-full overflow-hidden bg-slate-100">
-                        <img src="{{ $post->image }}" alt="Post image" class="h-full w-full object-cover">
+                    <div onclick="openPostDetailModal({{ $post->id }})" class="aspect-video w-full overflow-hidden bg-slate-100 cursor-pointer group">
+                        <img src="{{ $post->image }}" alt="Post image" class="h-full w-full object-cover group-hover:scale-105 transition duration-300">
                     </div>
                 @endif
 
-                <div class="p-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                <div onclick="openPostDetailModal({{ $post->id }})" class="p-4 text-xs sm:text-sm text-slate-700 leading-relaxed cursor-pointer hover:text-slate-900 transition">
                     <p>{{ $post->caption }}</p>
                 </div>
 
                 <div class="flex items-center justify-between px-4 py-3 text-sm font-semibold border-t border-slate-100">
-                    <div class="flex gap-4">
-                        <button data-like class="flex items-center gap-1.5 text-[#4c54d2] hover:opacity-80 transition">
-                            @include('partials.icons', ['name' => 'heart'])
-                            <span>{{ $post->likes_count }}</span>
+                    <div class="flex items-center gap-5">
+                        @php
+                            $isLiked = $post->isLikedBy(Auth::user());
+                            $isSaved = Auth::user() ? Auth::user()->savedPosts()->where('post_id', $post->id)->exists() : false;
+                        @endphp
+                        {{-- Like Button --}}
+                        <button type="button"
+                                onclick="togglePostLike({{ $post->id }}, this)"
+                                class="flex items-center gap-1.5 transition {{ $isLiked ? 'text-rose-500 font-bold' : 'text-slate-500 hover:text-rose-500' }}"
+                                id="like-btn-{{ $post->id }}">
+                            <span class="like-icon flex items-center justify-center">
+                                @if ($isLiked)
+                                    @include('partials.icons', ['name' => 'heart-solid', 'class' => 'h-5 w-5 text-rose-500 fill-rose-500'])
+                                @else
+                                    @include('partials.icons', ['name' => 'heart', 'class' => 'h-5 w-5 text-slate-500'])
+                                @endif
+                            </span>
+                            <span class="like-count text-xs font-bold" id="like-count-{{ $post->id }}">{{ $post->likes_count }}</span>
                         </button>
-                        <span class="flex items-center gap-1.5 text-slate-500">
-                            @include('partials.icons', ['name' => 'comment'])
-                            {{ $post->comments_count }}
-                        </span>
-                        <a href="{{ route('chat') }}" class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition">
-                            @include('partials.icons', ['name' => 'send'])
-                            Kirim DM
+
+                        {{-- Comment Button (Threads/X style) --}}
+                        <button type="button"
+                                onclick="openCommentsModal({{ $post->id }})"
+                                class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition"
+                                id="comment-btn-{{ $post->id }}">
+                            @include('partials.icons', ['name' => 'comment', 'class' => 'h-5 w-5'])
+                            <span class="comment-count text-xs font-bold" id="comment-count-{{ $post->id }}">{{ $post->comments_count }}</span>
+                        </button>
+
+                        {{-- DM author --}}
+                        <a href="{{ route('chat', ['user' => $post->user->username ?? $post->user->id]) }}"
+                           class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition text-xs font-semibold">
+                            @include('partials.icons', ['name' => 'send', 'class' => 'h-4 w-4'])
+                            <span>Kirim DM</span>
                         </a>
                     </div>
 
                     <!-- Bookmark / Save button (Private Collection) -->
-                    <button type="button" onclick="alert('Postingan disimpan ke koleksi privat akunmu!')" class="text-slate-400 hover:text-[#4154e8] transition" title="Simpan ke koleksi privat">
-                        @include('partials.icons', ['name' => 'bookmark'])
+                    <button type="button"
+                            onclick="togglePostSave({{ $post->id }}, this)"
+                            class="transition {{ $isSaved ? 'text-[#4154e8]' : 'text-slate-400 hover:text-[#4154e8]' }}"
+                            title="{{ $isSaved ? 'Hapus dari simpanan' : 'Simpan ke koleksi privat' }}">
+                        @include('partials.icons', ['name' => 'bookmark', 'class' => 'h-5 w-5'])
                     </button>
                 </div>
             </article>
@@ -350,7 +375,388 @@
     <button type="button" onclick="changeStory(1)" class="absolute right-3 top-1/2 rounded-full bg-white/15 px-3 py-2 text-white hover:bg-white/25 sm:right-8" aria-label="Cerita berikutnya">›</button>
 </div>
 
+<!-- THREADS / X STYLE COMMENTS MODAL -->
+<div id="comments-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-3 sm:p-4 backdrop-blur-sm animate-fade-in" role="dialog" aria-modal="true" onclick="if(event.target === this) closeCommentsModal()">
+    <div class="relative flex flex-col w-full max-w-xl max-h-[88vh] rounded-[28px] bg-white shadow-2xl overflow-hidden border border-slate-100">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-white/95 sticky top-0 z-10 backdrop-blur">
+            <div class="flex items-center gap-2.5">
+                <h3 class="text-base font-extrabold text-slate-900">Komentar</h3>
+                <span id="modal-comments-count-pill" class="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">0</span>
+            </div>
+            <button type="button" onclick="closeCommentsModal()" class="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition" aria-label="Tutup">
+                @include('partials.icons', ['name' => 'close', 'class' => 'h-5 w-5'])
+            </button>
+        </div>
+
+        <!-- Scrollable Modal Body: Post Snippet + Root Input + Threads -->
+        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" id="modal-comments-scroll-body">
+            <!-- Original Post Preview (Threads/X style) -->
+            <div id="modal-post-snippet" class="relative pb-2">
+                <div class="flex items-start gap-3">
+                    <div class="relative shrink-0 flex flex-col items-center">
+                        <div id="modal-post-author-avatar-wrap">
+                            <!-- populated by JS -->
+                        </div>
+                        <!-- Vertical line connecting to comment box -->
+                        <div class="w-0.5 flex-1 bg-slate-200 my-1 min-h-[20px]"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span id="modal-post-author-name" class="text-xs font-extrabold text-slate-900 leading-tight"></span>
+                            <span id="modal-post-author-handle" class="text-xs font-medium text-slate-400"></span>
+                            <span class="text-slate-300">·</span>
+                            <span id="modal-post-time" class="text-xs text-slate-400 font-medium"></span>
+                        </div>
+                        <p id="modal-post-caption" class="text-xs sm:text-sm text-slate-800 mt-1 leading-relaxed whitespace-pre-wrap"></p>
+                        <div id="modal-post-image-wrap" class="mt-2.5 hidden">
+                            <img id="modal-post-image" src="" alt="Post image" class="max-h-56 rounded-2xl object-cover border border-slate-100 shadow-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment Input Form (Threads/X style) -->
+            <div class="rounded-2xl bg-slate-50 border border-slate-200/80 p-3.5 transition focus-within:border-[#4154e8] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#4154e8]/20">
+                <form id="comment-form" onsubmit="submitComment(event)" class="flex flex-col gap-2">
+                    <input type="hidden" id="comment-parent-id" value="">
+                    <!-- Reply Target Indicator -->
+                    <div id="reply-indicator" class="hidden items-center justify-between bg-blue-50 text-[#4154e8] px-3 py-1 rounded-xl text-xs font-semibold">
+                        <span id="reply-target-text">Membalas @username</span>
+                        <button type="button" onclick="cancelReplyTarget()" class="text-slate-400 hover:text-slate-600 font-bold ml-2 text-sm">&times;</button>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <div class="shrink-0 mt-0.5">
+                            @if ($authUser && $authUser->avatar)
+                                <img src="{{ $authUser->avatar }}" class="h-8 w-8 rounded-full object-cover">
+                            @else
+                                <div class="flex h-8 w-8 items-center justify-center rounded-full bg-[#4154e8] text-white text-[11px] font-black">
+                                    {{ $userInitials }}
+                                </div>
+                            @endif
+                        </div>
+                        <textarea id="comment-input" rows="2" placeholder="Tulis balasan Anda..." required
+                                  class="flex-1 bg-transparent border-0 p-0 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 outline-none resize-none"></textarea>
+                    </div>
+                    <div class="flex items-center justify-between border-t border-slate-200/60 pt-2 mt-1">
+                        <span class="text-[11px] text-slate-400 font-medium">Bahas dengan warga secara santun</span>
+                        <button type="submit" id="comment-submit-btn"
+                                class="rounded-full bg-[#4154e8] hover:bg-[#3243d4] px-4 py-1.5 text-xs font-extrabold text-white transition shadow-sm disabled:opacity-50">
+                            Balas
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Comments List -->
+            <div id="modal-comments-list" class="space-y-3 pt-2">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+let activeCommentsPostId = null;
+
+function togglePostLike(postId, btn) {
+    fetch('/posts/' + postId + '/like', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const countEl = document.getElementById('like-count-' + postId);
+            if (countEl) countEl.textContent = data.likes_count;
+
+            const iconWrap = btn.querySelector('.like-icon');
+            if (data.liked) {
+                btn.className = 'flex items-center gap-1.5 transition text-rose-500 font-bold';
+                iconWrap.innerHTML = `<svg class="h-5 w-5 text-rose-500 fill-rose-500" viewBox="0 0 24 24"><path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+            } else {
+                btn.className = 'flex items-center gap-1.5 transition text-slate-500 hover:text-rose-500';
+                iconWrap.innerHTML = `<svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z"/></svg>`;
+            }
+        }
+    });
+}
+
+function togglePostSave(postId, btn) {
+    fetch('/posts/' + postId + '/toggle-save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (data.saved) {
+                btn.className = 'transition text-[#4154e8] hover:opacity-80';
+                btn.title = 'Hapus dari simpanan';
+            } else {
+                btn.className = 'transition text-slate-400 hover:text-[#4154e8]';
+                btn.title = 'Simpan ke koleksi privat';
+            }
+        }
+    });
+}
+
+function openCommentsModal(postId) {
+    activeCommentsPostId = postId;
+    cancelReplyTarget();
+    document.getElementById('comment-input').value = '';
+
+    const modal = document.getElementById('comments-modal');
+    modal.classList.replace('hidden', 'flex');
+
+    const list = document.getElementById('modal-comments-list');
+    list.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-10 text-slate-400">
+            <div class="animate-spin h-6 w-6 border-2 border-[#4154e8] border-t-transparent rounded-full mb-2"></div>
+            <span class="text-xs font-semibold">Memuat komentar...</span>
+        </div>`;
+
+    fetch('/posts/' + postId + '/comments', {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Populate Post preview
+            const post = data.post;
+            document.getElementById('modal-post-author-name').textContent = post.author_name;
+            document.getElementById('modal-post-author-handle').textContent = '@' + post.author_username;
+            document.getElementById('modal-post-time').textContent = post.created_at;
+            document.getElementById('modal-post-caption').textContent = post.caption || '';
+
+            const avatarWrap = document.getElementById('modal-post-author-avatar-wrap');
+            if (post.author_avatar) {
+                avatarWrap.innerHTML = `<img src="${post.author_avatar}" class="h-10 w-10 rounded-full object-cover">`;
+            } else {
+                avatarWrap.innerHTML = `<div class="flex h-10 w-10 items-center justify-center rounded-full bg-[#4154e8] text-white text-xs font-black">${post.author_initials}</div>`;
+            }
+
+            const imgWrap = document.getElementById('modal-post-image-wrap');
+            const imgEl = document.getElementById('modal-post-image');
+            if (post.image) {
+                imgEl.src = post.image;
+                imgWrap.classList.remove('hidden');
+            } else {
+                imgWrap.classList.add('hidden');
+            }
+
+            // Update count pill
+            document.getElementById('modal-comments-count-pill').textContent = data.comments_count;
+            const cardCount = document.getElementById('comment-count-' + postId);
+            if (cardCount) cardCount.textContent = data.comments_count;
+
+            renderModalComments(data.comments);
+        }
+    })
+    .catch(() => {
+        list.innerHTML = '<div class="py-8 text-center text-xs text-rose-500">Gagal memuat komentar.</div>';
+    });
+}
+
+function closeCommentsModal() {
+    const modal = document.getElementById('comments-modal');
+    modal.classList.replace('flex', 'hidden');
+    activeCommentsPostId = null;
+    cancelReplyTarget();
+}
+
+function renderModalComments(comments) {
+    window.currentDetailCommentsMap = window.currentDetailCommentsMap || {};
+    if (comments && comments.length) {
+        comments.forEach(c => {
+            window.currentDetailCommentsMap[c.id] = c;
+            if (c.replies && c.replies.length) {
+                c.replies.forEach(r => { window.currentDetailCommentsMap[r.id] = r; });
+            }
+        });
+    }
+
+    const list = document.getElementById('modal-comments-list');
+    if (!comments || comments.length === 0) {
+        list.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-8 text-slate-400">
+                <svg class="h-8 w-8 text-slate-300 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                <p class="text-xs font-bold text-slate-600">Belum ada komentar</p>
+                <p class="text-[11px] text-slate-400">Jadilah yang pertama memulai obrolan!</p>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = comments.map(c => renderCommentItem(c)).join('');
+}
+
+function renderCommentItem(c, isReply = false) {
+    const avatar = c.user_avatar
+        ? `<img src="${c.user_avatar}" class="${isReply ? 'h-7 w-7' : 'h-9 w-9'} rounded-full object-cover">`
+        : `<div class="flex ${isReply ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs'} items-center justify-center rounded-full bg-[#4154e8] text-white font-black">${c.user_initials}</div>`;
+
+    const hasReplies = c.replies && c.replies.length > 0;
+
+    let repliesHtml = '';
+    if (hasReplies) {
+        repliesHtml = `
+            <div class="relative pl-6 mt-2 space-y-2.5">
+                <div class="absolute left-3.5 top-0 bottom-3 w-0.5 bg-slate-200"></div>
+                ${c.replies.map(r => renderCommentItem(r, true)).join('')}
+            </div>`;
+    }
+
+    return `
+        <div class="comment-item group/item relative" id="comment-node-${c.id}">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0 pt-0.5">
+                    ${avatar}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="rounded-2xl bg-slate-50 p-3 text-left">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-xs font-extrabold text-slate-900 leading-tight">${c.user_name}</span>
+                                <span class="text-[11px] text-slate-400 font-medium">@${c.user_username}</span>
+                                <span class="text-slate-300">·</span>
+                                <span class="text-[10px] text-slate-400 font-medium">${c.created_at}</span>
+                            </div>
+                            ${c.can_delete ? `
+                                <button type="button" onclick="deleteComment(${c.id})" class="text-slate-400 hover:text-rose-600 transition p-1" title="Hapus komentar">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                            ` : ''}
+                        </div>
+                        <p class="text-xs text-slate-800 mt-1 leading-relaxed whitespace-pre-wrap">${c.body}</p>
+                    </div>
+
+                    <!-- Action Bar under comment -->
+                    <div class="flex items-center gap-3 px-2 pt-1">
+                        <button type="button" onclick="setReplyTarget(${c.id}, '${c.user_username}')"
+                                class="text-[11px] font-bold text-slate-500 hover:text-[#4154e8] transition">
+                            Balas
+                        </button>
+                    </div>
+
+                    ${repliesHtml}
+                </div>
+            </div>
+        </div>`;
+}
+
+function setReplyTarget(commentId, username) {
+    document.getElementById('comment-parent-id').value = commentId;
+    document.getElementById('reply-target-text').textContent = 'Membalas @' + username;
+    document.getElementById('reply-indicator').classList.remove('hidden');
+    document.getElementById('reply-indicator').classList.add('flex');
+
+    const input = document.getElementById('comment-input');
+    input.value = '@' + username + ' ';
+    input.focus();
+}
+
+function cancelReplyTarget() {
+    document.getElementById('comment-parent-id').value = '';
+    const indicator = document.getElementById('reply-indicator');
+    if (indicator) {
+        indicator.classList.remove('flex');
+        indicator.classList.add('hidden');
+    }
+}
+
+function submitComment(event) {
+    event.preventDefault();
+    if (!activeCommentsPostId) return;
+
+    const input = document.getElementById('comment-input');
+    const body = input.value.trim();
+    if (!body) return;
+
+    const parentId = document.getElementById('comment-parent-id').value;
+    const submitBtn = document.getElementById('comment-submit-btn');
+    submitBtn.disabled = true;
+
+    fetch('/posts/' + activeCommentsPostId + '/comments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            body: body,
+            parent_id: parentId || null
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        if (data.success) {
+            input.value = '';
+            cancelReplyTarget();
+
+            // Refresh comments
+            openCommentsModal(activeCommentsPostId);
+        } else {
+            alert(data.error || 'Gagal mengirim komentar.');
+        }
+    })
+    .catch(() => {
+        submitBtn.disabled = false;
+        alert('Terjadi kesalahan saat mengirim komentar.');
+    });
+}
+
+function deleteComment(commentId) {
+    if (typeof promptDeleteComment === 'function') {
+        promptDeleteComment(commentId);
+        return;
+    }
+
+    if (!confirm('Yakin ingin menghapus komentar ini?')) return;
+
+    fetch('/comments/' + commentId, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Update counters
+            document.getElementById('modal-comments-count-pill').textContent = data.comments_count;
+            if (activeCommentsPostId) {
+                const cardCount = document.getElementById('comment-count-' + activeCommentsPostId);
+                if (cardCount) cardCount.textContent = data.comments_count;
+            }
+
+            // Remove node from DOM
+            const node = document.getElementById('comment-node-' + commentId);
+            if (node) {
+                node.style.transition = 'opacity 0.2s, transform 0.2s';
+                node.style.opacity = '0';
+                node.style.transform = 'scale(0.95)';
+                setTimeout(() => node.remove(), 200);
+            }
+        } else {
+            alert(data.error || 'Gagal menghapus komentar.');
+        }
+    })
+    .catch(() => {
+        alert('Terjadi kesalahan saat menghapus komentar.');
+    });
+}
 const storyViewerItems = @json($storyViewerData->values());
 let activeStoryIndex = 0;
 
