@@ -24,9 +24,11 @@
         <div class="rounded-2xl bg-[#f8fafc] border border-slate-100/90 p-6 flex flex-col items-center justify-center text-center mb-6">
             <div class="relative">
                 @if (!empty($authUser['avatar']))
-                    <img src="{{ $authUser['avatar'] }}"
-                         alt="{{ $authUser['name'] }}"
-                         class="h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md">
+                    <span class="relative block h-20 w-20">
+                        <span class="absolute inset-0 flex items-center justify-center rounded-full bg-[#1b4332] text-2xl font-black text-white">{{ $userInitials ?? 'BA' }}</span>
+                        <img src="{{ $authUser['avatar'] }}" alt="{{ $authUser['name'] }}" onerror="this.remove()"
+                             class="relative h-20 w-20 rounded-full object-cover ring-4 ring-white shadow-md">
+                    </span>
                 @else
                     <div class="flex h-20 w-20 items-center justify-center rounded-full bg-[#1b4332] text-white text-2xl font-black ring-4 ring-white shadow-md">
                         {{ $userInitials ?? 'BA' }}
@@ -113,4 +115,3 @@ document.addEventListener('keydown', function(e) {
     }
 });
 </script>
-

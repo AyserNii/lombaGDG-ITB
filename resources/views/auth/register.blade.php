@@ -73,10 +73,16 @@
                         </div>
 
                         <div>
-                            <label for="location" class="mb-1 block text-xs font-bold text-[#1d355d]">Wilayah / Cluster Domisili</label>
-                            <input id="location" type="text" name="location" value="{{ old('location') }}"
-                                   placeholder="Contoh: Cluster Beji Indah, Margonda, dll."
-                                   class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs sm:text-sm outline-none transition focus:border-[#4154e8] focus:ring-2 focus:ring-[#4154e8]/20">
+                            @include('partials.location-picker', [
+                                'inputId' => 'register-location',
+                                'label' => 'Wilayah / Cluster Domisili',
+                                'value' => old('location'),
+                                'country' => old('location_country', 'Indonesia'),
+                                'countries' => $countries,
+                                'latitude' => old('location_latitude'),
+                                'longitude' => old('location_longitude'),
+                                'required' => true,
+                            ])
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

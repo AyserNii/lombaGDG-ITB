@@ -41,20 +41,18 @@ class BerandaController extends Controller
         return $this->index();
     }
 
-    public function index()
+    public function index() 
     {
         $authUser = Auth::user();
-        $user = $authUser ? $authUser->toArray() : session('user', [
-            'name' => 'Resya Anggara',
-            'username' => 'aysernii',
-            'location' => 'Beji, Depok',
-        ]);
+        $user = MainModel::cek_login($authUser->id);
 
         $ringkasan = $authUser ? MainModel::data_ringkasan($authUser->id) : null;
+        $communityPosts = MainModel::community_posts();
 
         $datakonten['judulcore'] = $this->title;
         $datakonten['user'] = $user;
         $datakonten['ringkasan'] = $ringkasan;
+        $datakonten['communityPosts'] = $communityPosts;
         $datakonten['basePath'] = $this->basePath;
         $datakonten['routePrefix'] = $this->routePrefix;
         $datakonten['sessionNamespace'] = $this->sessionNamespace;

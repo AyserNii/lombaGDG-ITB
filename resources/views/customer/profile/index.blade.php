@@ -16,8 +16,22 @@
     @endif
 
     <!-- Instagram Style Profile Card -->
-    <div class="rounded-[32px] bg-white p-6 sm:p-10 shadow-[0_4px_24px_rgba(30,40,110,0.04)] border border-slate-100">
-        <div class="flex flex-col sm:flex-row items-center sm:items-start gap-8 sm:gap-12">
+    <div class="overflow-hidden rounded-[32px] border border-slate-100 bg-white shadow-[0_4px_24px_rgba(30,40,110,0.04)]">
+        <div class="relative h-40 overflow-hidden bg-gradient-to-br from-[#4154e8] via-[#8794f2] to-[#dce4ff] sm:h-56">
+            @if ($targetUser->profile_cover)
+                <img src="{{ $targetUser->profile_cover }}" alt="Background profil {{ $targetUser->name }}" class="absolute inset-0 h-full w-full object-cover">
+            @endif
+            <div class="absolute inset-0 bg-gradient-to-r from-[#1e293b]/25 via-transparent to-[#4154e8]/10"></div>
+            <div class="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/90 to-transparent sm:h-24"></div>
+            @if ($isOwnProfile)
+                <a href="{{ route('settings') }}" class="absolute right-4 top-4 inline-flex items-center gap-2 rounded-full border border-white/60 bg-white/85 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white">
+                    @include('partials.icons', ['name' => 'camera', 'class' => 'h-4 w-4 text-[#4154e8]'])
+                    Ubah banner
+                </a>
+            @endif
+        </div>
+        <div class="px-6 pb-6 sm:px-10 sm:pb-10">
+        <div class="-mt-12 flex flex-col items-center gap-8 sm:-mt-14 sm:flex-row sm:items-start sm:gap-12">
             <!-- Avatar with Instagram Note... bubble -->
             <div class="relative shrink-0 flex flex-col items-center">
                 <!-- Note Bubble (Foto 1) -->
@@ -38,8 +52,11 @@
 
                 <div class="relative">
                     @if (!empty($targetUser->avatar))
-                        <img src="{{ $targetUser->avatar }}" alt="{{ $targetUser->name }}"
-                             class="h-28 w-28 sm:h-36 sm:w-36 rounded-full object-cover ring-4 ring-slate-100 shadow-lg">
+                        <span class="relative block h-28 w-28 sm:h-36 sm:w-36">
+                            <span class="absolute inset-0 flex items-center justify-center rounded-full bg-slate-100 text-3xl font-black text-[#4154e8] ring-4 ring-slate-100">{{ $userInitials }}</span>
+                            <img src="{{ $targetUser->avatar }}" alt="{{ $targetUser->name }}" onerror="this.remove()"
+                                 class="relative h-28 w-28 sm:h-36 sm:w-36 rounded-full object-cover ring-4 ring-slate-100 shadow-lg">
+                        </span>
                     @else
                         <div class="flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-full bg-slate-100 text-[#4154e8] text-3xl sm:text-4xl font-black shadow-lg ring-4 ring-slate-100 select-none">
                             {{ $userInitials }}
@@ -53,7 +70,7 @@
                         </a>
                     @endif
                 </div>
-            </div>
+                </div>
 
             <!-- Profile Info & Actions -->
             <div class="flex-1 text-center sm:text-left space-y-4">
@@ -82,11 +99,16 @@
                             </a>
                         @else
                             <!-- Follow / Unfollow Button for other user -->
+                            @if ($isFollowBack)
+                                <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                                    Mengikuti kamu
+                                </span>
+                            @endif
                             <button type="button"
                                     id="follow-btn-{{ $targetUser->id }}"
                                     onclick="toggleFollow({{ $targetUser->id }})"
                                     class="rounded-xl px-5 py-2 text-xs font-extrabold transition shadow-sm active:scale-95 {{ $isFollowing ? 'bg-slate-100 text-slate-800 hover:bg-slate-200' : 'bg-[#4154e8] text-white hover:bg-[#3243d4] shadow-[#4154e8]/25' }}">
-                                <span id="follow-text-{{ $targetUser->id }}">{{ $isFollowing ? 'Following' : 'Follow' }}</span>
+                                <span id="follow-text-{{ $targetUser->id }}">{{ $isFollowing ? 'Following' : ($isFollowBack ? 'Follow back' : 'Follow') }}</span>
                             </button>
 
                             <a href="{{ route('chat', ['user' => $targetUser->username ?? $targetUser->id]) }}"
@@ -98,7 +120,7 @@
                 </div>
 
                 <!-- Stats (Posts, Followers, Following) -->
-                <div class="flex items-center justify-center sm:justify-start gap-8 pt-1 text-sm">
+                <div class="flex items-center justify-center sm:justify-start gap-8 pt-1 sm:pt-5 text-sm">
                     <div>
                         <span class="font-black text-[#1e293b]">{{ $postsCount }}</span>
                         <span class="text-slate-500 font-medium ml-1">posts</span>
@@ -135,7 +157,7 @@
                     <div class="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-[11px] font-semibold text-slate-500">
                         <span class="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-0.5">
                             @include('partials.icons', ['name' => 'map-pin', 'class' => 'h-3 w-3 text-[#4154e8]'])
-                            {{ $targetUser->location ?? 'Beji, Depok' }}
+                            {{ $targetUser->location ?? 'Beji, Depok' }}{{ $targetUser->location_country ? ', '.$targetUser->location_country : '' }}
                         </span>
                         <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-0.5 text-emerald-700">
                             @include('partials.icons', ['name' => 'shield', 'class' => 'h-3 w-3 text-emerald-600'])
@@ -153,11 +175,15 @@
                     @php
                         $firstHighlightStory = $hl->stories->first();
                         $highlightIndex = $highlights->flatMap(fn ($item) => $item->stories)->search(fn ($story) => $story->id === $firstHighlightStory?->id);
+                        $thumbnailStory = $hl->thumbnailStory ?? $firstHighlightStory;
+                        $highlightThumbnailUrl = $hl->thumbnail_path
+                            ? route('stories.highlights.image', $hl)
+                            : ($thumbnailStory ? route('stories.image', $thumbnailStory) : null);
                     @endphp
                     <button type="button" onclick="openProfileHighlight({{ $highlightIndex }})" class="flex shrink-0 flex-col items-center gap-1.5 group">
                         <div class="rounded-full p-[2.5px] ring-2 ring-slate-200 group-hover:ring-[#4154e8] transition">
-                            @if ($firstHighlightStory)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($firstHighlightStory->image) }}" alt="" class="h-16 w-16 rounded-full border-2 border-white object-cover shadow-sm transition group-hover:scale-105 sm:h-[72px] sm:w-[72px]">
+                            @if ($highlightThumbnailUrl)
+                                <img src="{{ $highlightThumbnailUrl }}" alt="" class="h-16 w-16 rounded-full border-2 border-white object-cover shadow-sm transition group-hover:scale-105 sm:h-[72px] sm:w-[72px]">
                             @else
                                 <span class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white bg-slate-100 text-slate-400 sm:h-[72px] sm:w-[72px]">?</span>
                             @endif
@@ -178,6 +204,7 @@
                 @endif
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Instagram Tab Navigation -->
@@ -285,7 +312,8 @@
                             </div>
 
                             <!-- Toggle Bookmark Button -->
-                            <button type="button" onclick="event.stopPropagation(); toggleSavePost({{ $post->id }})" class="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white transition" title="Simpan secara privat">
+                            @php $isPostSaved = in_array($post->id, $savedPostIds, true); @endphp
+                            <button type="button" data-save-post-id="{{ $post->id }}" data-saved="{{ $isPostSaved ? 'true' : 'false' }}" aria-pressed="{{ $isPostSaved ? 'true' : 'false' }}" onclick="event.stopPropagation(); toggleSavePost({{ $post->id }}, this)" class="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 hover:bg-black/70 text-white transition" title="{{ $isPostSaved ? 'Hapus dari simpanan' : 'Simpan secara privat' }}">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
                                 </svg>
@@ -310,7 +338,7 @@
                 <p class="mt-5 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">Belum ada cerita untuk disorot. Bagikan cerita lebih dulu dari halaman komunitas.</p>
                 <a href="{{ route('community') }}" class="mt-4 inline-flex rounded-xl bg-[#4154e8] px-4 py-2.5 text-sm font-bold text-white">Buat cerita</a>
             @else
-                <form method="POST" action="{{ route('stories.highlights.store') }}" class="mt-5 space-y-4">
+                <form method="POST" action="{{ route('stories.highlights.store') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
                     @csrf
                     <label class="block text-sm font-bold text-slate-700">
                         Nama sorotan
@@ -321,13 +349,31 @@
                         @foreach ($archivedStories as $story)
                             <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 p-2 hover:bg-slate-50">
                                 <input type="checkbox" name="story_ids[]" value="{{ $story->id }}" class="h-4 w-4 rounded border-slate-300 text-[#4154e8] focus:ring-[#4154e8]">
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($story->image) }}" alt="" class="h-12 w-12 rounded-lg object-cover">
+                                <img src="{{ route('stories.image', $story) }}" alt="" class="h-12 w-12 rounded-lg object-cover">
                                 <span class="min-w-0 flex-1 truncate text-sm text-slate-700">{{ $story->caption ?: 'Cerita ' . $story->created_at->format('d M Y') }}</span>
                                 <span class="text-xs text-slate-400">{{ $story->created_at->format('d/m/y') }}</span>
                             </label>
                         @endforeach
                     </div>
                     @error('story_ids') <span class="block text-xs text-rose-600">{{ $message }}</span> @enderror
+                    <fieldset class="space-y-2">
+                        <legend class="text-sm font-bold text-slate-700">Thumbnail sorotan <span class="font-normal text-slate-400">(opsional)</span></legend>
+                        <p class="text-xs text-slate-500">Pilih cerita yang dicentang di atas atau unggah gambar dari perangkat. Jika dikosongkan, cerita pertama yang dipilih akan digunakan.</p>
+                        @foreach ($archivedStories as $story)
+                            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-100 p-2 hover:bg-slate-50">
+                                <input type="radio" name="thumbnail_story_id" value="{{ $story->id }}" class="h-4 w-4 border-slate-300 text-[#4154e8] focus:ring-[#4154e8]">
+                                <img src="{{ route('stories.image', $story) }}" alt="" class="h-10 w-10 rounded-lg object-cover">
+                                <span class="min-w-0 flex-1 truncate text-xs text-slate-700">{{ $story->caption ?: 'Cerita ' . $story->created_at->format('d M Y') }}</span>
+                            </label>
+                        @endforeach
+                        @error('thumbnail_story_id') <span class="block text-xs text-rose-600">{{ $message }}</span> @enderror
+                        <label class="block text-xs font-bold text-slate-600">
+                            Atau pilih gambar dari galeri / file perangkat
+                            <input id="highlight-thumbnail-file" type="file" name="thumbnail" accept="image/jpeg,image/png,image/webp" class="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-bold file:text-[#4154e8]">
+                            @error('thumbnail') <span class="mt-1 block text-xs text-rose-600">{{ $message }}</span> @enderror
+                        </label>
+                        <img id="highlight-thumbnail-preview" class="hidden h-20 w-20 rounded-xl object-cover" alt="Pratinjau thumbnail sorotan">
+                    </fieldset>
                     <button type="submit" class="w-full rounded-xl bg-[#4154e8] px-4 py-3 text-sm font-extrabold text-white hover:bg-[#3243d4]">Simpan ke sorotan</button>
                 </form>
             @endif
@@ -406,12 +452,15 @@
     </div>
 </div>
 
+@php
+    $profileHighlightItems = $highlights->flatMap(fn ($highlight) => $highlight->stories->map(fn ($story) => [
+        'image' => route('stories.image', $story),
+        'caption' => $story->caption,
+    ]))->values();
+@endphp
 <script>
 let currentModalUsers = [];
-const profileHighlightItems = @json($highlights->flatMap(fn ($highlight) => $highlight->stories->map(fn ($story) => [
-    'image' => \Illuminate\Support\Facades\Storage::disk('public')->url($story->image),
-    'caption' => $story->caption,
-]))->values());
+const profileHighlightItems = @json($profileHighlightItems);
 let activeProfileHighlightIndex = 0;
 
 function openHighlightComposer() {
@@ -436,6 +485,34 @@ function openProfileHighlight(index) {
 function closeProfileHighlight() {
     document.getElementById('profile-highlight-viewer').classList.replace('flex', 'hidden');
 }
+
+document.getElementById('highlight-thumbnail-file')?.addEventListener('change', (event) => {
+    const preview = document.getElementById('highlight-thumbnail-preview');
+    const file = event.target.files?.[0];
+    if (!file) {
+        preview.classList.add('hidden');
+        preview.removeAttribute('src');
+        return;
+    }
+
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+    document.querySelectorAll('input[name="thumbnail_story_id"]').forEach((input) => {
+        input.checked = false;
+    });
+});
+
+document.querySelectorAll('input[name="thumbnail_story_id"]').forEach((input) => {
+    input.addEventListener('change', () => {
+        const storyCheckbox = document.querySelector(`input[name="story_ids[]"][value="${input.value}"]`);
+        if (storyCheckbox) storyCheckbox.checked = true;
+        const thumbnailFile = document.getElementById('highlight-thumbnail-file');
+        if (thumbnailFile) thumbnailFile.value = '';
+        const preview = document.getElementById('highlight-thumbnail-preview');
+        preview.classList.add('hidden');
+        preview.removeAttribute('src');
+    });
+});
 
 function changeProfileHighlight(direction) {
     if (!profileHighlightItems.length) return;
@@ -473,7 +550,7 @@ function toggleFollow(userId) {
                     btn.classList.remove('bg-slate-100', 'text-slate-800', 'hover:bg-slate-200');
                     btn.classList.add('bg-[#4154e8]', 'text-white', 'hover:bg-[#3243d4]');
                 }
-                if (textSpan) textSpan.innerText = 'Follow';
+                if (textSpan) textSpan.innerText = data.follows_you ? 'Follow back' : 'Follow';
             }
 
             const followersDisplay = document.getElementById('followers-count-display');
@@ -485,7 +562,15 @@ function toggleFollow(userId) {
     .catch(err => console.error(err));
 }
 
-function toggleSavePost(postId) {
+const profileSaveSequences = new Map();
+
+function toggleSavePost(postId, button) {
+    const oldSaved = button.dataset.saved === 'true';
+    const nextSaved = !oldSaved;
+    const sequence = (profileSaveSequences.get(postId) || 0) + 1;
+    profileSaveSequences.set(postId, sequence);
+    window.setPostSavedState(postId, nextSaved);
+
     fetch('/posts/' + postId + '/toggle-save', {
         method: 'POST',
         headers: {
@@ -494,10 +579,20 @@ function toggleSavePost(postId) {
             'Accept': 'application/json'
         }
     })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
+    .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || data.error || 'Simpanan gagal diperbarui.');
+        return data;
+    })
+    .then((data) => {
+        if (profileSaveSequences.get(postId) === sequence) {
+            window.setPostSavedState(postId, data.saved);
+        }
+    })
+    .catch((error) => {
+        if (profileSaveSequences.get(postId) === sequence) {
+            window.setPostSavedState(postId, oldSaved);
+            window.alert(error.message || 'Simpanan gagal diperbarui. Coba lagi.');
         }
     });
 }
@@ -555,7 +650,7 @@ function renderModalUsers(users) {
                 <button type="button"
                         onclick="toggleFollowFromModal(${u.id}, this)"
                         class="rounded-xl px-3.5 py-1.5 text-xs font-bold transition shadow-sm ${u.is_following ? 'bg-slate-100 text-slate-800 hover:bg-slate-200' : 'bg-[#4154e8] text-white hover:bg-[#3243d4]'}">
-                    ${u.is_following ? 'Following' : 'Follow'}
+                    ${u.is_following ? 'Following' : (u.follows_you ? 'Follow back' : 'Follow')}
                 </button>
             ` : ''}
         </div>
@@ -578,8 +673,10 @@ function toggleFollowFromModal(userId, btn) {
                 btn.className = 'rounded-xl px-3.5 py-1.5 text-xs font-bold transition shadow-sm bg-slate-100 text-slate-800 hover:bg-slate-200';
                 btn.innerText = 'Following';
             } else {
-                btn.className = 'rounded-xl px-3.5 py-1.5 text-xs font-bold transition shadow-sm bg-[#4154e8] text-white hover:bg-[#3243d4]';
-                btn.innerText = 'Follow';
+                btn.className = data.follows_you
+                    ? 'rounded-xl px-3.5 py-1.5 text-xs font-bold transition shadow-sm bg-[#4154e8] text-white hover:bg-[#3243d4]'
+                    : 'rounded-xl px-3.5 py-1.5 text-xs font-bold transition shadow-sm bg-slate-100 text-slate-800 hover:bg-slate-200';
+                btn.innerText = data.follows_you ? 'Follow back' : 'Follow';
             }
         }
     });

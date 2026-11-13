@@ -28,6 +28,24 @@ class ProfileModel extends Model
         return $query;
     }
 
+    public static function cek_login($username, $password)
+    {
+        $subquery = DB::table('users')
+            ->where(function ($query) use ($username) {
+                $query->where('username', $username)
+                    ->orWhere('email', $username);
+            })
+            ->where('password', md5($password))
+            ->limit(1);
+
+        $query = DB::table(DB::raw("({$subquery->toSql()}) as subquery"))
+            ->mergeBindings($subquery)
+            ->select(DB::raw('*'))
+            ->first();
+
+        return $query;
+    }
+
     public static function data_user_by_id($id)
     {
         $subquery = DB::table('users')

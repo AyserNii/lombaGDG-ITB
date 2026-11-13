@@ -36,7 +36,7 @@ class LoginController extends Controller
         }
 
         // Fallback: manual hash check (jaga-jaga jika Auth::attempt gagal)
-        $user = User::where('email', strtolower(trim($request->email)))->first();
+        $user = User::findByEmail(strtolower(trim($request->email)));
         if ($user && Hash::check($request->password, $user->password)) {
             Auth::login($user, $request->boolean('remember'));
             $request->session()->regenerate();

@@ -22,11 +22,15 @@ class User extends Authenticatable
         'role',
         'role_type',
         'location',
+        'location_latitude',
+        'location_longitude',
+        'location_country',
         'bio',
         'website',
         'gender',
         'note',
         'avatar',
+        'profile_cover',
         'phone',
         'savings',
         'sessions_count',
@@ -85,6 +89,99 @@ class User extends Authenticatable
     public function hasSaved(int|string $postId): bool
     {
         return $this->savedPosts()->where('post_id', $postId)->exists();
+    }
+
+    public static function firstRecord(): ?self
+    {
+        return static::query()->first();
+    }
+
+    public static function totalCount(): int
+    {
+        return static::query()->count();
+    }
+
+    public static function findById(int $userId): ?self
+    {
+        return static::query()->find($userId);
+    }
+
+    public static function findByIdOrFail(int $userId): self
+    {
+        return static::query()->findOrFail($userId);
+    }
+
+    public static function findByUsernameOrId(string $identifier): ?self
+    {
+        return static::query()
+            ->where('username', $identifier)
+            ->orWhere('id', is_numeric($identifier) ? (int) $identifier : 0)
+            ->first();
+    }
+
+    public static function findByUsernameOrIdOrFail(string $identifier): self
+    {
+        return static::query()
+            ->where('username', $identifier)
+            ->orWhere('id', is_numeric($identifier) ? (int) $identifier : 0)
+            ->firstOrFail();
+    }
+
+    public static function findByGoogleId(string $googleId): ?self
+    {
+        return static::query()->where('google_id', $googleId)->first();
+    }
+
+    public static function findByEmail(string $email): ?self
+    {
+        return static::query()->where('email', $email)->first();
+    }
+
+    public static function usernameExists(string $username): bool
+    {
+        return static::query()->where('username', $username)->exists();
+    }
+
+    public static function firstExcept(?int $userId = null): ?self
+    {
+        $query = static::query();
+
+        if ($userId !== null) {
+            $query->where('id', '!=', $userId);
+        }
+
+        return $query->first();
+    }
+
+    public static function suggestions(?int $exceptUserId = null, int $limit = 4)
+    {
+        $query = static::query();
+
+        if ($exceptUserId !== null) {
+            $query->where('id', '!=', $exceptUserId);
+        }
+
+        return $query->take($limit)->get();
+    }
+
+    public function followingUserIds(): array
+    {
+        return $this->following()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function followerUserIds(): array
+    {
+        return $this->followers()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    public function profileHighlights()
+    {
+        return $this->storyHighlights()->with(['stories', 'thumbnailStory'])->get();
+    }
+
+    public function archivedStories()
+    {
+        return $this->stories()->whereDoesntHave('highlights')->latest()->get();
     }
 
     public function sentMessages(): HasMany

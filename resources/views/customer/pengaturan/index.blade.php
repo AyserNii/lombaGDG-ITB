@@ -8,11 +8,31 @@
     $nameParts = preg_split('/\s+/', $rawName);
     $userInitials = strtoupper(mb_substr($nameParts[0] ?? 'U', 0, 1) . (isset($nameParts[1]) ? mb_substr($nameParts[1], 0, 1) : ''));
     $currentGender = $user['gender'] ?? 'prefer_not_to_say';
-    $completionPct = $completion ?? 65;
+    $completionPct = $completion ?? 0;
     $joinDate = isset($userModel->created_at) ? $userModel->created_at->translatedFormat('F Y') : 'November 2026';
 @endphp
 
 <div class="mx-auto max-w-4xl space-y-6 pb-24">
+
+    <nav aria-label="Breadcrumb" class="flex items-center">
+        <div class="inline-flex items-center gap-2 rounded-2xl border border-white/80 bg-white/80 px-3 py-2.5 shadow-sm backdrop-blur sm:px-4">
+            <a href="{{ route('profile') }}" class="group inline-flex items-center gap-2 rounded-xl px-2 py-1 text-xs font-bold text-slate-500 transition hover:bg-indigo-50 hover:text-[#4154e8]">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-indigo-100 group-hover:text-[#4154e8]">
+                    @include('partials.icons', ['name' => 'user', 'class' => 'h-4 w-4'])
+                </span>
+                Profil saya
+            </a>
+            <svg class="h-4 w-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/>
+            </svg>
+            <span aria-current="page" class="inline-flex items-center gap-2 px-2 text-xs font-extrabold text-[#4154e8]">
+                <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50">
+                    @include('partials.icons', ['name' => 'settings', 'class' => 'h-4 w-4'])
+                </span>
+                Pengaturan
+            </span>
+        </div>
+    </nav>
 
     @if (session('success'))
         <div class="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-3.5 text-xs font-bold text-emerald-800 shadow-sm animate-fade-in">
@@ -89,15 +109,12 @@
                 
                 <!-- Avatar Circle with Camera Badge -->
                 <div class="relative mx-auto w-28 h-28">
-                    @if (!empty($user['avatar']))
-                        <img id="avatar-preview" src="{{ $user['avatar'] }}" alt="{{ $user['name'] }}"
-                             class="h-28 w-28 rounded-full object-cover shadow-sm ring-4 ring-slate-100">
-                    @else
-                        <div id="avatar-preview-fallback" class="flex h-28 w-28 items-center justify-center rounded-full bg-[#e0e7ff] text-[#4154e8] text-3xl font-black shadow-sm ring-4 ring-slate-100 select-none">
-                            {{ $userInitials }}
-                        </div>
-                        <img id="avatar-preview" src="" alt="Avatar" class="h-28 w-28 rounded-full object-cover shadow-sm ring-4 ring-slate-100 hidden">
-                    @endif
+                    <div id="avatar-preview-fallback" class="{{ !empty($user['avatar']) ? 'hidden ' : '' }}flex h-28 w-28 items-center justify-center rounded-full bg-[#e0e7ff] text-[#4154e8] text-3xl font-black shadow-sm ring-4 ring-slate-100 select-none">
+                        {{ $userInitials }}
+                    </div>
+                    <img id="avatar-preview" src="{{ $user['avatar'] ?? '' }}" alt="{{ $user['name'] }}"
+                         onerror="this.classList.add('hidden');document.getElementById('avatar-preview-fallback').classList.remove('hidden')"
+                         class="h-28 w-28 rounded-full object-cover shadow-sm ring-4 ring-slate-100 {{ empty($user['avatar']) ? 'hidden' : '' }}">
 
                     <!-- Small Camera Badge Button -->
                     <button type="button" onclick="document.getElementById('avatar_file').click()"
@@ -138,6 +155,41 @@
                     </button>
                     <p class="text-[11px] text-slate-400 mt-2">Format JPG, PNG, atau WebP. Foto akan dipotong 1:1 agar proporsional di seluruh sistem.</p>
                 </div>
+            </div>
+
+            <div class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
+                <div class="relative h-32 overflow-hidden bg-gradient-to-br from-[#4154e8] via-[#8794f2] to-[#dce4ff] sm:h-44">
+                    <img id="profile-cover-preview" src="{{ $user['profile_cover'] ?? '' }}" alt="Pratinjau banner profil"
+                         class="{{ empty($user['profile_cover']) ? 'hidden ' : '' }}absolute inset-0 h-full w-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-r from-slate-950/55 via-slate-900/20 to-transparent"></div>
+                    <div class="absolute bottom-4 left-4 text-white sm:bottom-5 sm:left-6">
+                        <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-white/75">Pratinjau profil</span>
+                        <p class="mt-1 text-lg font-extrabold tracking-tight sm:text-xl">Banner profil</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-extrabold text-slate-900">Personalisasi halaman profilmu</h3>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">Gunakan gambar JPG, PNG, atau WebP. Ukuran maksimal 8 MB.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#4154e8] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#3243d4] sm:w-auto">
+                            @include('partials.icons', ['name' => 'camera', 'class' => 'h-4 w-4'])
+                            Pilih gambar
+                            <input id="profile-cover-file" type="file" name="profile_cover_file" accept="image/jpeg,image/png,image/webp" class="sr-only" onchange="previewProfileCover(this)">
+                        </label>
+                        @if (!empty($user['profile_cover']))
+                            <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-rose-200 px-3 py-2.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50">
+                                <input type="checkbox" name="remove_profile_cover" value="1" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                Hapus banner
+                            </label>
+                        @endif
+                    </div>
+                </div>
+                @error('profile_cover_file')
+                    <p class="px-4 pb-4 text-xs font-semibold text-rose-600 sm:px-5">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Form Inputs (Foto 4) -->
@@ -253,25 +305,6 @@
 
             </div>
 
-            <!-- CARD FOOTER (PERSIS FOTO 5) -->
-            <div class="border-t border-slate-100 pt-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div class="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                    <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                    <span>Perubahan data profil akan langsung diterapkan di seluruh sistem.</span>
-                </div>
-
-                <button type="submit"
-                        class="w-full sm:w-auto rounded-full bg-[#4154e8] hover:bg-[#3243d4] px-8 py-3 text-xs font-bold text-white shadow-md shadow-[#4154e8]/25 transition active:scale-95 flex items-center justify-center gap-2">
-                    <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Simpan Perubahan</span>
-                </button>
-            </div>
         </div>
 
         <!-- CARD 3: PREFERENSI PRIVASI & GOTONG ROYONG -->
@@ -320,9 +353,16 @@
             <!-- Location & Phone -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div>
-                    <label class="block text-xs font-bold text-slate-900 mb-1.5">Lokasi / Cluster</label>
-                    <input type="text" name="location" value="{{ old('location', $user['location'] ?? 'Beji, Depok') }}" required
-                           class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-[#4154e8] focus:ring-2 focus:ring-[#4154e8]/15 transition">
+                    @include('partials.location-picker', [
+                        'inputId' => 'settings-location',
+                        'label' => 'Lokasi / Cluster',
+                        'value' => old('location', ($user['location'] ?? '') === 'Belum diatur' ? '' : ($user['location'] ?? '')),
+                        'country' => old('location_country', $user['location_country'] ?? 'Indonesia'),
+                        'countries' => $countries,
+                        'latitude' => old('location_latitude', $user['location_latitude'] ?? ''),
+                        'longitude' => old('location_longitude', $user['location_longitude'] ?? ''),
+                        'required' => true,
+                    ])
                 </div>
 
                 <div>
@@ -333,6 +373,19 @@
             </div>
         </div>
 
+        <div class="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div class="flex items-center gap-3 text-[11px] font-medium text-slate-500">
+                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-[#4154e8]">
+                    @include('partials.icons', ['name' => 'shield', 'class' => 'h-4 w-4'])
+                </span>
+                <span>Perubahan profil dan privasi akan diterapkan setelah disimpan.</span>
+            </div>
+            <button type="submit"
+                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#4154e8] px-6 py-3 text-xs font-extrabold text-white shadow-md shadow-[#4154e8]/20 transition hover:bg-[#3243d4] active:scale-[0.98] sm:w-auto">
+                @include('partials.icons', ['name' => 'check', 'class' => 'h-4 w-4'])
+                <span>Simpan Perubahan</span>
+            </button>
+        </div>
     </form>
 </div>
 
@@ -620,6 +673,18 @@ function confirmAvatarCrop() {
     if (window.showSweetAlert) {
         showSweetAlert('Foto Terpilih!', 'Foto profil siap disimpan. Klik Simpan Perubahan untuk memperbarui akun.', 'success');
     }
+}
+
+function previewProfileCover(input) {
+    const preview = document.getElementById('profile-cover-preview');
+    const file = input.files?.[0];
+    if (!preview || !file) return;
+
+    preview.src = URL.createObjectURL(file);
+    preview.classList.remove('hidden');
+
+    const removeCheckbox = document.querySelector('input[name="remove_profile_cover"]');
+    if (removeCheckbox) removeCheckbox.checked = false;
 }
 </script>
 @endsection

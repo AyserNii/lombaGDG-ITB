@@ -111,6 +111,9 @@
                 @php $isActive = $activeUser && $activeUser->id === $c['id']; @endphp
                 <a href="{{ route('chat', ['user' => $c['username'] ?? $c['id']]) }}"
                    id="contact-item-{{ $c['id'] }}"
+                   data-user-id="{{ $c['id'] }}"
+                   aria-current="{{ $isActive ? 'page' : 'false' }}"
+                   onclick="return skipActiveContactNavigation(event, this)"
                    class="contact-item flex items-center justify-between px-5 py-3 transition {{ $isActive ? 'bg-slate-100' : 'hover:bg-slate-50' }}">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="relative shrink-0">
@@ -136,7 +139,7 @@
                     <div class="flex flex-col items-end shrink-0 pl-2">
                         <span id="contact-time-{{ $c['id'] }}" class="text-[10px] text-slate-400">{{ $c['last_time'] }}</span>
                         @if ($c['unread'])
-                            <span class="h-2 w-2 rounded-full bg-[#0095f6] mt-1"></span>
+                            <span id="contact-unread-{{ $c['id'] }}" class="h-2 w-2 rounded-full bg-[#0095f6] mt-1"></span>
                         @endif
                     </div>
                 </a>
@@ -151,7 +154,11 @@
     <!-- ═══════════════════════════════════════════════════════════
          RIGHT PANEL: CHAT ROOM (Instagram Web Style)
     ═══════════════════════════════════════════════════════════ -->
-    <main class="hidden sm:flex flex-1 flex-col bg-white">
+    <main id="chat-room"
+          data-active-user-id="{{ $activeUser->id ?? '' }}"
+          data-last-message-id="{{ $messages->max('id') ?? 0 }}"
+          data-last-read-message-id="{{ $messages->where('sender_id', $authUser->id)->where('is_read', true)->max('id') ?? 0 }}"
+          class="hidden sm:flex flex-1 flex-col bg-white">
         @if ($activeUser)
             @php
                 $rawActiveName = trim($activeUser->name ?? 'User');
@@ -226,7 +233,7 @@
                         $isMe = $msg->sender_id === $authUser->id;
                         $isRead = (bool) ($msg->is_read ?? false);
                     @endphp
-                    <div class="flex flex-col {{ $isMe ? 'items-end' : 'items-start' }}" data-message-id="{{ $msg->id }}">
+                    <div id="msg-{{ $msg->id }}" class="flex flex-col {{ $isMe ? 'items-end' : 'items-start' }}" data-message-id="{{ $msg->id }}">
                         @if ($msg->media_url)
                             <div class="mb-1.5 max-w-xs sm:max-w-sm rounded-2xl overflow-hidden shadow-md">
                                 <img src="{{ $msg->media_url }}" alt="Media" class="w-full h-auto object-cover rounded-2xl">
@@ -282,8 +289,9 @@
                            class="flex-1 bg-transparent text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none">
 
                     <!-- Send Button -->
-                    <button type="submit" class="font-extrabold text-xs text-[#0095f6] hover:text-[#0077c5] transition px-2 py-1 select-none">
-                        Kirim
+                    <button type="submit" aria-label="Kirim pesan" title="Kirim pesan"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0095f6] text-white shadow-sm transition hover:bg-[#0077c5] active:scale-95">
+                        @include('partials.icons', ['name' => 'send', 'class' => 'h-4 w-4'])
                     </button>
                 </form>
             </footer>
@@ -379,11 +387,12 @@ function submitChatMessage(e, mediaUrl = '') {
     const msgText = input ? input.value.trim() : '';
     if (!msgText && !mediaUrl) return;
 
-    @if($activeUser)
-        const receiverId = {{ $activeUser->id }};
-    @else
+    const room = document.getElementById('chat-room');
+    const receiverId = room ? room.dataset.activeUserId : '';
+    if (!receiverId) {
+        alert('Pilih percakapan terlebih dahulu.');
         return;
-    @endif
+    }
 
     const tempId = 'temp-' + Date.now();
     const now = new Date();
@@ -440,6 +449,9 @@ function appendOutgoingBubble(text, media, time, tempId) {
     const div = document.createElement('div');
     div.id = tempId;
     div.className = 'flex flex-col items-end animate-fade-in';
+    div.dataset.pendingMessage = 'true';
+    div.dataset.messageText = text || '';
+    div.dataset.messageMedia = media || '';
 
     let mediaHtml = '';
     if (media) {
@@ -476,6 +488,13 @@ function confirmOutgoingBubble(tempId, realId, serverTime) {
     if (!el) return;
     el.id = 'msg-' + realId;
     el.setAttribute('data-message-id', realId);
+    delete el.dataset.pendingMessage;
+    delete el.dataset.messageText;
+    delete el.dataset.messageMedia;
+    const room = document.getElementById('chat-room');
+    if (room) {
+        room.dataset.lastMessageId = String(Math.max(Number(room.dataset.lastMessageId || 0), Number(realId)));
+    }
 
     const timeEl = el.querySelector('.bubble-time');
     const tickEl = el.querySelector('.bubble-tick');
@@ -518,6 +537,16 @@ function scrollMessagesToBottom() {
     if (container) {
         container.scrollTop = container.scrollHeight;
     }
+}
+
+function skipActiveContactNavigation(event, contactLink) {
+    const room = document.getElementById('chat-room');
+    if (room && room.dataset.activeUserId === contactLink.dataset.userId) {
+        event.preventDefault();
+        return false;
+    }
+
+    return true;
 }
 
 function clearChatSearch() {
@@ -603,46 +632,82 @@ function submitChatNote(e, clear = false) {
 }
 
 // ─── SINKRONISASI REAL-TIME (Ceklis Dua Berubah Biru Saat Dibaca & Pesan Baru) ──
-@if ($activeUser)
+let chatSyncInFlight = false;
+
 function syncActiveChat() {
-    const receiverId = {{ $activeUser->id }};
-    fetch('{{ route("chat.sync") }}?receiver_id=' + receiverId, {
-        headers: { 'Accept': 'application/json' }
+    const room = document.getElementById('chat-room');
+    const receiverId = room ? room.dataset.activeUserId : '';
+    if (!room || !receiverId || document.hidden || chatSyncInFlight) return;
+
+    const syncUrl = new URL('{{ route("chat.sync") }}', window.location.origin);
+    syncUrl.searchParams.set('receiver_id', receiverId);
+    syncUrl.searchParams.set('after_id', room.dataset.lastMessageId || '0');
+    syncUrl.searchParams.set('read_after_id', room.dataset.lastReadMessageId || '0');
+    chatSyncInFlight = true;
+
+    fetch(syncUrl, {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store',
     })
-    .then(res => res.json())
+    .then(response => {
+        if (!response.ok) throw new Error('Sinkronisasi pesan gagal.');
+        return response.json();
+    })
     .then(data => {
+        if (room.dataset.activeUserId !== receiverId) return;
         if (data.success && Array.isArray(data.messages)) {
             let hasNewMessage = false;
 
             data.messages.forEach(msg => {
-                // Cari apakah bubble pesan sudah ada di DOM
-                const existingBubble = document.querySelector(`[data-message-id="${msg.id}"]`);
+                const existingBubble = document.getElementById('msg-' + msg.id);
 
                 if (existingBubble) {
-                    // Update tanda ceklis jika pesan keluar milik kita
                     if (msg.is_outgoing) {
                         const tickContainer = existingBubble.querySelector('.bubble-tick') || existingBubble.querySelector('[title="Terkirim & aktif"]') || existingBubble.querySelector('[title="Sudah dibaca"]');
                         if (tickContainer) {
-                            if (msg.is_read) {
-                                tickContainer.outerHTML = DOUBLE_TICK_BLUE; // Berubah jadi ceklis dua biru!
-                            } else {
-                                tickContainer.outerHTML = DOUBLE_TICK_GRAY; // Ceklis dua abu-abu
-                            }
+                            tickContainer.outerHTML = msg.is_read ? DOUBLE_TICK_BLUE : DOUBLE_TICK_GRAY;
                         }
                     }
                 } else {
-                    // Pesan baru masuk dari lawan bicara yang belum ada di layar!
                     hasNewMessage = true;
-                    appendIncomingBubble(msg.text, msg.media_url, msg.created_at, msg.id);
+                    if (msg.is_outgoing) {
+                        const pendingBubble = Array.from(document.querySelectorAll('[data-pending-message="true"]')).find(bubble =>
+                            bubble.dataset.messageText === (msg.text || '') &&
+                            bubble.dataset.messageMedia === (msg.media_url || '')
+                        );
+                        if (pendingBubble) {
+                            confirmOutgoingBubble(pendingBubble.id, msg.id, msg.created_at);
+                            if (msg.is_read) {
+                                const tick = document.getElementById('msg-' + msg.id).querySelector('.bubble-tick');
+                                if (tick) tick.innerHTML = DOUBLE_TICK_BLUE;
+                            }
+                        } else {
+                            const tempId = 'sync-' + msg.id;
+                            appendOutgoingBubble(msg.text, msg.media_url, msg.created_at, tempId);
+                            confirmOutgoingBubble(tempId, msg.id, msg.created_at);
+                        }
+                    } else {
+                        appendIncomingBubble(msg.text, msg.media_url, msg.created_at, msg.id);
+                    }
                 }
             });
+
+            (data.read_ids || []).forEach(id => {
+                const bubble = document.getElementById('msg-' + id);
+                const tick = bubble && bubble.querySelector('.bubble-tick');
+                if (tick) tick.innerHTML = DOUBLE_TICK_BLUE;
+            });
+
+            room.dataset.lastMessageId = String(data.last_message_id || room.dataset.lastMessageId || 0);
+            room.dataset.lastReadMessageId = String(data.last_read_message_id || room.dataset.lastReadMessageId || 0);
 
             if (hasNewMessage) {
                 scrollMessagesToBottom();
             }
         }
     })
-    .catch(() => {});
+    .catch(error => console.error(error))
+    .finally(() => { chatSyncInFlight = false; });
 }
 
 function appendIncomingBubble(text, media, time, id) {
@@ -651,6 +716,7 @@ function appendIncomingBubble(text, media, time, id) {
 
     const div = document.createElement('div');
     div.className = 'flex flex-col items-start animate-fade-in';
+    div.id = 'msg-' + id;
     div.setAttribute('data-message-id', id);
 
     let mediaHtml = '';
@@ -679,9 +745,10 @@ function appendIncomingBubble(text, media, time, id) {
     container.appendChild(div);
 }
 
-// Jalankan polling setiap 3.5 detik untuk sinkronisasi ceklis biru dan pesan baru
-setInterval(syncActiveChat, 3500);
-@endif
+setInterval(syncActiveChat, 8000);
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncActiveChat();
+});
 
 // Auto scroll saat pertama kali dibuka
 window.addEventListener('DOMContentLoaded', () => {

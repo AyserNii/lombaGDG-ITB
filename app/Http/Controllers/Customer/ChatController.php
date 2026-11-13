@@ -9,53 +9,61 @@ header('Pragma: no-cache');
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer\ChatModel as MainModel;
-use App\Models\Message;
+use App\Models\Notification;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
     private $role;
+
     private $module;
+
     private $page;
+
     private $title;
+
     private $basePath;
+
     private $routePrefix;
+
     private $routeName;
+
     private $lastPageKey;
+
     private $alertKey;
+
     private $sessionNamespace;
 
     public function __construct()
     {
-        $this->role             = 'customer';
-        $this->module           = 'chat';
-        $this->page             = 'Pesan Masuk';
-        $this->title            = 'Pesan & Obrolan Gotong Royong';
-        $this->basePath         = 'customer.chat';
-        $this->routePrefix      = 'customer.chat';
-        $this->routeName        = 'customer.chat.index';
-        $this->lastPageKey      = 'customer_chat_last_page';
-        $this->alertKey         = 'customer_chat_alert';
+        $this->role = 'customer';
+        $this->module = 'chat';
+        $this->page = 'Pesan Masuk';
+        $this->title = 'Pesan & Obrolan Gotong Royong';
+        $this->basePath = 'customer.chat';
+        $this->routePrefix = 'customer.chat';
+        $this->routeName = 'customer.chat.index';
+        $this->lastPageKey = 'customer_chat_last_page';
+        $this->alertKey = 'customer_chat_alert';
         $this->sessionNamespace = 'customer_chat';
     }
 
     public function index(Request $request)
     {
         $authUser = Auth::user();
-        if (!$authUser) {
-            $authUser = User::first();
+        if (! $authUser) {
+            $authUser = User::firstRecord();
         }
 
         $activeUsername = $request->query('user');
         $activeUser = null;
 
         if ($activeUsername) {
-            $activeUser = User::where('username', $activeUsername)
-                ->orWhere('id', is_numeric($activeUsername) ? (int) $activeUsername : 0)
-                ->first();
+            $activeUser = User::findByUsernameOrId($activeUsername);
         }
 
         // Ambil kontak dari MainModel
@@ -66,42 +74,38 @@ class ChatController extends Controller
             $unreadCount = MainModel::total_unread_from_user($u->id, $authUser->id);
 
             $lastTime = '';
-            if ($lastMsg && !empty($lastMsg->created_at)) {
+            if ($lastMsg && ! empty($lastMsg->created_at)) {
                 $lastTime = Carbon::parse($lastMsg->created_at)->diffForHumans(null, true, true);
             }
 
             return [
-                'id'            => $u->id,
-                'name'          => $u->name,
-                'username'      => $u->username ?? 'user_' . $u->id,
-                'avatar'        => $u->avatar,
-                'initials'      => strtoupper(substr($u->name, 0, 2)),
-                'last_message'  => $lastMsg ? $lastMsg->message : 'Mulai percakapan baru...',
-                'is_outgoing'   => $lastMsg ? $lastMsg->sender_id === $authUser->id : false,
-                'last_time'     => $lastTime,
-                'unread'        => $unreadCount > 0,
-                'note'          => $u->note,
+                'id' => $u->id,
+                'name' => $u->name,
+                'username' => $u->username ?? 'user_'.$u->id,
+                'avatar' => $u->avatar,
+                'initials' => strtoupper(substr($u->name, 0, 2)),
+                'last_message' => $lastMsg ? $lastMsg->message : 'Mulai percakapan baru...',
+                'is_outgoing' => $lastMsg ? $lastMsg->sender_id === $authUser->id : false,
+                'last_time' => $lastTime,
+                'unread' => $unreadCount > 0,
+                'note' => $u->note,
             ];
         });
 
         // Set active user if not yet chosen
-        if (!$activeUser) {
+        if (! $activeUser) {
             if ($contacts->isNotEmpty()) {
                 $firstContactId = $contacts->first()['id'];
-                $activeUser = User::find($firstContactId);
+                $activeUser = User::findById((int) $firstContactId);
             } else {
-                $activeUser = User::where('id', '!=', $authUser->id)->first();
+                $activeUser = User::firstExcept($authUser->id);
             }
         }
 
         // Messages with activeUser
         $messages = collect();
         if ($activeUser) {
-            $messages = Message::where(function ($q) use ($authUser, $activeUser) {
-                $q->where('sender_id', $authUser->id)->where('receiver_id', $activeUser->id);
-            })->orWhere(function ($q) use ($authUser, $activeUser) {
-                $q->where('sender_id', $activeUser->id)->where('receiver_id', $authUser->id);
-            })->orderBy('created_at', 'asc')->get();
+            $messages = MainModel::conversationMessages($authUser->id, $activeUser->id);
 
             MainModel::tandai_dibaca($authUser->id, $activeUser->id);
         }
@@ -110,18 +114,18 @@ class ChatController extends Controller
         $notes = MainModel::list_notes_friends($authUser->id, 8);
 
         $datakonten = [
-            'judulcore'         => $this->title,
-            'role'              => $this->role,
-            'module'            => $this->module,
-            'page'              => $this->page,
-            'basePath'          => $this->basePath,
-            'routePrefix'       => $this->routePrefix,
-            'sessionNamespace'  => $this->sessionNamespace,
-            'authUser'          => $authUser,
-            'activeUser'        => $activeUser,
-            'contacts'          => $contacts,
-            'messages'          => $messages,
-            'notes'             => $notes,
+            'judulcore' => $this->title,
+            'role' => $this->role,
+            'module' => $this->module,
+            'page' => $this->page,
+            'basePath' => $this->basePath,
+            'routePrefix' => $this->routePrefix,
+            'sessionNamespace' => $this->sessionNamespace,
+            'authUser' => $authUser,
+            'activeUser' => $activeUser,
+            'contacts' => $contacts,
+            'messages' => $messages,
+            'notes' => $notes,
         ];
 
         return view('customer.chat.index', $datakonten);
@@ -131,8 +135,8 @@ class ChatController extends Controller
     {
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
-            'message'     => 'nullable|string',
-            'media_url'   => 'nullable|string',
+            'message' => 'nullable|string',
+            'media_url' => 'nullable|string',
         ]);
 
         $authUser = Auth::user();
@@ -147,53 +151,66 @@ class ChatController extends Controller
             $request->message,
             $request->media_url
         );
+        $receiver = User::findByIdOrFail((int) $request->receiver_id);
+
+        Notification::create([
+            'user_id' => $receiver->id,
+            'actor_id' => $authUser->id,
+            'type' => 'message',
+            'message' => trim($request->message) !== ''
+                ? 'mengirim pesan: "'.Str::limit(trim($request->message), 120).'"'
+                : 'mengirim foto.',
+            'is_read' => false,
+        ]);
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => [
-                    'id'          => $message->id,
-                    'text'        => $message->message,
-                    'media_url'   => $message->media_url,
-                    'created_at'  => Carbon::parse($message->created_at)->format('H:i'),
+                    'id' => $message->id,
+                    'text' => $message->message,
+                    'media_url' => $message->media_url,
+                    'created_at' => Carbon::parse($message->created_at)->format('H:i'),
                     'is_outgoing' => true,
                 ],
             ]);
         }
 
-        $receiver = User::find($request->receiver_id);
         return redirect()->route('chat', ['user' => $receiver->username ?? $receiver->id]);
     }
 
     public function sync(Request $request)
     {
         $authUser = Auth::user();
-        $receiverId = $request->query('receiver_id');
+        $validated = $request->validate([
+            'receiver_id' => 'required|integer|exists:users,id',
+            'after_id' => 'sometimes|integer|min:0',
+            'read_after_id' => 'sometimes|integer|min:0',
+        ]);
 
-        if (!$authUser || !$receiverId) {
-            return response()->json(['messages' => []]);
-        }
+        $receiverId = (int) $validated['receiver_id'];
+        $afterId = isset($validated['after_id']) ? (int) $validated['after_id'] : null;
+        $readAfterId = (int) ($validated['read_after_id'] ?? 0);
 
         // Tandai pesan dari lawan bicara sebagai sudah dibaca
         MainModel::tandai_dibaca($authUser->id, $receiverId);
 
-        // Ambil semua pesan percakapan
-        $messages = Message::where(function ($q) use ($authUser, $receiverId) {
-            $q->where('sender_id', $authUser->id)->where('receiver_id', $receiverId);
-        })->orWhere(function ($q) use ($authUser, $receiverId) {
-            $q->where('sender_id', $receiverId)->where('receiver_id', $authUser->id);
-        })->orderBy('created_at', 'asc')->get();
+        $messages = MainModel::conversationMessages($authUser->id, $receiverId, $afterId);
+        $readMessageIds = MainModel::readMessageIdsAfter($authUser->id, $receiverId, $readAfterId);
 
         return response()->json([
-            'success'  => true,
+            'success' => true,
+            'last_message_id' => $messages->max('id') ?? ($afterId ?? 0),
+            'last_read_message_id' => $readMessageIds->max() ?? $readAfterId,
+            'read_ids' => $readMessageIds,
             'messages' => $messages->map(function ($m) use ($authUser) {
                 return [
-                    'id'          => $m->id,
-                    'text'        => $m->message,
-                    'media_url'   => $m->media_url,
+                    'id' => $m->id,
+                    'text' => $m->message,
+                    'media_url' => $m->media_url,
                     'is_outgoing' => $m->sender_id === $authUser->id,
-                    'is_read'     => (bool) $m->is_read,
-                    'created_at'  => Carbon::parse($m->created_at)->format('H:i'),
+                    'is_read' => (bool) $m->is_read,
+                    'created_at' => Carbon::parse($m->created_at)->format('H:i'),
                 ];
             }),
         ]);

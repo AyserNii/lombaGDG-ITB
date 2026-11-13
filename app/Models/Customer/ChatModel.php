@@ -2,6 +2,7 @@
 
 namespace App\Models\Customer;
 
+use App\Models\Message;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,33 @@ class ChatModel extends Model
 
     public $timestamps = false;
     protected $table = 'messages';
+
+    public static function conversationMessages(int $user1, int $user2, ?int $afterId = null)
+    {
+        $query = Message::where(function ($conversation) use ($user1, $user2) {
+            $conversation->where(function ($direction) use ($user1, $user2) {
+                $direction->where('sender_id', $user1)->where('receiver_id', $user2);
+            })->orWhere(function ($direction) use ($user1, $user2) {
+                $direction->where('sender_id', $user2)->where('receiver_id', $user1);
+            });
+        });
+
+        if ($afterId !== null) {
+            $query->where('id', '>', $afterId);
+        }
+
+        return $query->orderBy('id')->get();
+    }
+
+    public static function readMessageIdsAfter(int $senderId, int $receiverId, int $afterId)
+    {
+        return Message::where('sender_id', $senderId)
+            ->where('receiver_id', $receiverId)
+            ->where('is_read', true)
+            ->where('id', '>', $afterId)
+            ->orderBy('id')
+            ->pluck('id');
+    }
 
     public static function list_contacts($userId)
     {

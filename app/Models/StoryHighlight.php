@@ -11,6 +11,8 @@ class StoryHighlight extends Model
     protected $fillable = [
         'user_id',
         'title',
+        'thumbnail_path',
+        'thumbnail_story_id',
     ];
 
     public function user(): BelongsTo
@@ -21,5 +23,10 @@ class StoryHighlight extends Model
     public function stories(): BelongsToMany
     {
         return $this->belongsToMany(Story::class, 'story_highlight_stories')->withTimestamps();
+    }
+
+    public function thumbnailStory(): BelongsTo
+    {
+        return $this->belongsTo(Story::class, 'thumbnail_story_id');
     }
 }

@@ -144,6 +144,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/kirim', [CustomerBarengKirim::class, 'index'])->name('kirim');
     Route::get('/sesi', [CustomerSesiAktif::class, 'index'])->name('sesi');
     Route::get('/komunitas', [CustomerKomunitas::class, 'index'])->name('community');
+    Route::get('/community/posts/{id}', [CustomerPost::class, 'communityShow'])->name('community.posts.show');
     Route::get('/pengaturan', [CustomerPengaturan::class, 'index'])->name('settings');
     Route::post('/pengaturan', [CustomerPengaturan::class, 'update'])->name('settings.update');
 
@@ -166,9 +167,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/chat/sync', [CustomerChat::class, 'sync'])->name('chat.sync');
     Route::post('/chat/send', [CustomerChat::class, 'send'])->name('chat.send');
     Route::post('/stories', [CustomerStory::class, 'store'])->name('stories.store');
+    Route::get('/stories/{story}/image', [CustomerStory::class, 'image'])->name('stories.image');
+    Route::get('/story-highlights/{highlight}/image', [CustomerStory::class, 'highlightImage'])->name('stories.highlights.image');
     Route::post('/stories/highlights', [CustomerStory::class, 'storeHighlight'])->name('stories.highlights.store');
 
     Route::get('/notifications', [CustomerNotification::class, 'index'])->name('notifications');
     Route::get('/notifications/dropdown', [CustomerNotification::class, 'dropdown'])->name('notifications.dropdown');
     Route::get('/notifications/unread-count', [CustomerNotification::class, 'count'])->name('notifications.count');
+    Route::delete('/notifications', [CustomerNotification::class, 'destroyAll'])->name('notifications.destroy-all');
 });

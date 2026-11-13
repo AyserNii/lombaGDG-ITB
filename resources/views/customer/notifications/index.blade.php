@@ -33,9 +33,17 @@
                class="rounded-full px-4 py-1.5 text-xs font-extrabold transition {{ $filter === 'comments' ? 'bg-[#4154e8] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
                 Komentar
             </a>
+            <a href="{{ route('notifications', ['filter' => 'likes']) }}"
+               class="rounded-full px-4 py-1.5 text-xs font-extrabold transition {{ $filter === 'likes' ? 'bg-[#4154e8] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                Suka
+            </a>
             <a href="{{ route('notifications', ['filter' => 'follows']) }}"
                class="rounded-full px-4 py-1.5 text-xs font-extrabold transition {{ $filter === 'follows' ? 'bg-[#4154e8] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
                 Pengikut Baru
+            </a>
+            <a href="{{ route('notifications', ['filter' => 'messages']) }}"
+               class="rounded-full px-4 py-1.5 text-xs font-extrabold transition {{ $filter === 'messages' ? 'bg-[#4154e8] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                Pesan
             </a>
         </div>
 
@@ -81,7 +89,7 @@
             @if ($allNotifs->isEmpty())
                 <div class="py-16 text-center text-slate-400">
                     <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 mb-3 text-slate-400">
-                        @include('partials.icons', ['name' => 'bell', 'class' => 'h-7 w-7 text-slate-400'])
+                        @include('partials.icons', ['name' => 'bell-ring', 'class' => 'h-7 w-7 text-slate-400'])
                     </div>
                     <p class="text-sm font-extrabold text-slate-700">Belum ada notifikasi</p>
                     <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Aktivitas follower baru, komentar postingan, dan respon sesi bareng akan muncul di sini.</p>
@@ -93,6 +101,15 @@
 
 <script>
 function toggleNotifFollow(userId, btn) {
+    if (btn.disabled) return;
+
+    const originalHtml = btn.innerHTML;
+    const originalClass = btn.className;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.classList.add('cursor-wait', 'opacity-70');
+    btn.innerHTML = '<span class="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"></span><span>Memproses...</span>';
+
     fetch('/users/' + userId + '/toggle-follow', {
         method: 'POST',
         headers: {
@@ -101,17 +118,32 @@ function toggleNotifFollow(userId, btn) {
             'Accept': 'application/json'
         }
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error('Follow request failed.');
+        return res.json();
+    })
     .then(data => {
-        if (data.success) {
-            if (data.following) {
-                btn.className = 'rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-1.5 text-xs font-extrabold text-slate-700 transition';
-                btn.innerText = 'Following';
-            } else {
-                btn.className = 'rounded-xl bg-[#4154e8] hover:bg-[#3243d4] px-4 py-1.5 text-xs font-extrabold text-white transition';
-                btn.innerText = 'Follow';
-            }
+        if (!data.success) throw new Error(data.error || 'Follow request was not successful.');
+
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.className = data.following
+            ? 'rounded-xl bg-slate-100 hover:bg-slate-200 px-4 py-1.5 text-xs font-extrabold text-slate-700 transition'
+            : 'rounded-xl bg-[#4154e8] hover:bg-[#3243d4] px-4 py-1.5 text-xs font-extrabold text-white transition';
+        btn.innerText = data.following ? 'Following' : (data.follows_you ? 'Follow back' : 'Follow');
+        btn.dataset.followsYou = data.follows_you ? 'true' : 'false';
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        btn.className = originalClass;
+        btn.innerHTML = originalHtml;
+        if (window.showSweetAlert) {
+            showSweetAlert('Aksi gagal', 'Status follow belum berhasil diperbarui. Coba lagi.', 'error');
+        } else {
+            alert('Status follow belum berhasil diperbarui. Coba lagi.');
         }
+        console.error(error);
     });
 }
 </script>

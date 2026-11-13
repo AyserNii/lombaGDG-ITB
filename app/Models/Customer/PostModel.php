@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 class PostModel extends Model
 {
     use HasFactory;
+
     public $timestamps = false;
 
     public static function cek_post($idpost)
@@ -57,9 +58,9 @@ class PostModel extends Model
             ->join('users', 'users.id', '=', 'posts.user_id')
             ->select(DB::raw('posts.id'))
             ->where(function ($query) use ($cari) {
-                $query->where('posts.caption', 'LIKE', '%' . $cari . '%')
-                    ->orWhere('users.name', 'LIKE', '%' . $cari . '%')
-                    ->orWhere('users.username', 'LIKE', '%' . $cari . '%');
+                $query->where('posts.caption', 'LIKE', '%'.$cari.'%')
+                    ->orWhere('users.name', 'LIKE', '%'.$cari.'%')
+                    ->orWhere('users.username', 'LIKE', '%'.$cari.'%');
             })
             ->limit($limit);
 
@@ -77,9 +78,9 @@ class PostModel extends Model
             ->join('users', 'users.id', '=', 'posts.user_id')
             ->select(DB::raw('posts.id, posts.user_id, posts.caption, posts.image, posts.type, posts.likes_count, posts.comments_count, posts.created_at, users.name, users.username, users.avatar'))
             ->where(function ($query) use ($cari) {
-                $query->where('posts.caption', 'LIKE', '%' . $cari . '%')
-                    ->orWhere('users.name', 'LIKE', '%' . $cari . '%')
-                    ->orWhere('users.username', 'LIKE', '%' . $cari . '%');
+                $query->where('posts.caption', 'LIKE', '%'.$cari.'%')
+                    ->orWhere('users.name', 'LIKE', '%'.$cari.'%')
+                    ->orWhere('users.username', 'LIKE', '%'.$cari.'%');
             })
             ->orderBy('posts.id', 'DESC')
             ->limit($limit)
@@ -117,8 +118,8 @@ class PostModel extends Model
             'updated_at' => now(),
         ]);
 
-        return (object)[
-            'id_post' => $id
+        return (object) [
+            'id_post' => $id,
         ];
     }
 
@@ -154,28 +155,68 @@ class PostModel extends Model
 
     public static function tambah_like($idpost, $iduser)
     {
-        DB::table('post_likes')->insert([
-            'post_id' => $idpost,
-            'user_id' => $iduser,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('posts')->where('id', $idpost)->increment('likes_count');
-
-        return true;
+        return self::set_reaction($idpost, $iduser, 'like');
     }
 
     public static function hapus_like($idpost, $iduser)
     {
-        DB::table('post_likes')
+        return self::set_reaction($idpost, $iduser, null);
+    }
+
+    public static function set_reaction($idpost, $iduser, ?string $reaction): array
+    {
+        return DB::transaction(function () use ($idpost, $iduser, $reaction) {
+            $existing = DB::table('post_likes')
+                ->where('post_id', $idpost)
+                ->where('user_id', $iduser)
+                ->first();
+
+            if ($existing?->reaction === $reaction) {
+                $reaction = null;
+            }
+
+            if ($reaction === null) {
+                DB::table('post_likes')
+                    ->where('post_id', $idpost)
+                    ->where('user_id', $iduser)
+                    ->delete();
+            } else {
+                DB::table('post_likes')->updateOrInsert(
+                    ['post_id' => $idpost, 'user_id' => $iduser],
+                    ['reaction' => $reaction, 'created_at' => $existing->created_at ?? now(), 'updated_at' => now()]
+                );
+            }
+
+            $counts = self::reaction_counts($idpost);
+            DB::table('posts')->where('id', $idpost)->update(['likes_count' => $counts['likes_count']]);
+
+            return [
+                'reaction' => $reaction,
+                ...$counts,
+            ];
+        });
+    }
+
+    public static function reaction_counts($idpost): array
+    {
+        $counts = DB::table('post_likes')
+            ->where('post_id', $idpost)
+            ->selectRaw("SUM(CASE WHEN reaction = 'like' THEN 1 ELSE 0 END) AS likes_count")
+            ->selectRaw("SUM(CASE WHEN reaction = 'dislike' THEN 1 ELSE 0 END) AS dislikes_count")
+            ->first();
+
+        return [
+            'likes_count' => (int) ($counts->likes_count ?? 0),
+            'dislikes_count' => (int) ($counts->dislikes_count ?? 0),
+        ];
+    }
+
+    public static function reaction_by_user($idpost, $iduser): ?string
+    {
+        return DB::table('post_likes')
             ->where('post_id', $idpost)
             ->where('user_id', $iduser)
-            ->delete();
-
-        DB::table('posts')->where('id', $idpost)->decrement('likes_count');
-
-        return true;
+            ->value('reaction');
     }
 
     public static function cek_saved($idpost, $iduser)
@@ -236,8 +277,8 @@ class PostModel extends Model
 
         DB::table('posts')->where('id', $idpost)->increment('comments_count');
 
-        return (object)[
-            'id_comment' => $id
+        return (object) [
+            'id_comment' => $id,
         ];
     }
 
@@ -251,13 +292,12 @@ class PostModel extends Model
             $newCount = DB::table('comments')->where('post_id', $c->post_id)->count();
             DB::table('posts')->where('id', $c->post_id)->update(['comments_count' => $newCount]);
 
-            return (object)[
+            return (object) [
                 'post_id' => $c->post_id,
-                'comments_count' => $newCount
+                'comments_count' => $newCount,
             ];
         }
 
         return false;
     }
 }
-

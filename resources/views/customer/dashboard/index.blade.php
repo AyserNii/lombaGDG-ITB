@@ -4,17 +4,8 @@
 
 @section('content')
 @php
-    $authUser = $user ?? session('user', [
-        'name' => 'Grace Stanley',
-        'role' => 'Customer · Cluster Beji',
-        'avatar' => null,
-        'location' => 'Beji, Depok',
-        'savings' => 'Rp 95.4k',
-        'sessions_count' => 12,
-        'co2_saved' => '28.4 kg',
-        'badge' => 'Top Saver',
-    ]);
-    $firstName = explode(' ', $authUser['name'])[0];
+    $displayName = trim($user->name ?? '');
+    $firstName = $displayName !== '' ? explode(' ', $displayName, 2)[0] : 'Warga';
 @endphp
 <div class="grid grid-cols-1 gap-5 xl:grid-cols-12">
     <div class="space-y-5 xl:col-span-8">
@@ -28,7 +19,7 @@
                     </span>
                     <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1e293b]">Halo {{ $firstName }}!</h1>
                     <p class="mt-2 text-xs md:text-sm font-medium leading-relaxed text-[#7e8ba0]">
-                        Kamu punya {{ $authUser['sessions_count'] ?? 3 }} sesi BARENG aktif hari ini. Gabung bareng tetangga sekitar {{ $authUser['location'] ?? 'Beji' }} biar ongkir makin hemat dan bebas sampah berlebih!
+                        Kamu punya {{ $user->sessions_count ?? 0 }} sesi BARENG aktif hari ini. Gabung bareng tetangga sekitar {{ $user->location ?? 'lokasimu' }} biar ongkir makin hemat dan bebas sampah berlebih!
                     </p>
                     <div class="mt-3.5 flex items-center gap-4">
                         <a href="{{ route('sesi') }}" class="text-xs font-bold text-[#4154e8] underline underline-offset-4 hover:text-[#3243d4]">
@@ -71,8 +62,8 @@
                         <div>
                             <p class="text-[11px] font-semibold text-[#7e8ba0]">Total penghematan bulan ini:</p>
                             <div class="mt-0.5 flex items-baseline gap-2">
-                                <span class="text-3xl font-extrabold tracking-tight text-[#1e293b]">{{ $authUser['savings'] ?? 'Rp 95.4k' }}</span>
-                                <span class="text-[11px] font-semibold text-[#4154e8]">dari {{ $authUser['sessions_count'] ?? 12 }} sesi<br class="hidden sm:inline"> BARENG</span>
+                                <span class="text-3xl font-extrabold tracking-tight text-[#1e293b]">{{ $user->savings ?? 'Rp 0' }}</span>
+                                <span class="text-[11px] font-semibold text-[#4154e8]">dari {{ $user->sessions_count ?? 0 }} sesi<br class="hidden sm:inline"> BARENG</span>
                             </div>
                         </div>
                         <a href="{{ route('sesi') }}" class="rounded-full border border-gray-200 px-3.5 py-1 text-xs font-bold text-[#1e293b] transition hover:border-[#4154e8] hover:text-[#4154e8]">
@@ -323,55 +314,54 @@
         <section class="rounded-[26px] bg-white p-6 shadow-[0_4px_24px_rgba(30,40,110,0.04)]">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h2 class="text-base font-extrabold text-[#1e293b]">Sesi Komunitas</h2>
-                    <p class="text-[11px] font-semibold text-[#7e8ba0]">Agenda bareng tetangga</p>
+                    <h2 class="text-base font-extrabold text-[#1e293b]">Aktivitas Komunitas</h2>
+                    <p class="text-[11px] font-semibold text-[#7e8ba0]">3 postingan yang paling disukai</p>
                 </div>
                 <a href="{{ route('community') }}" class="text-xs font-bold text-[#4154e8] hover:underline">Lihat semua</a>
             </div>
 
-            <div class="space-y-4">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=120&q=80"
-                             alt="Makan Bareng Jumat"
-                             class="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-[#edf1f7]">
-                        <div class="min-w-0">
-                            <h3 class="text-xs font-bold text-[#1e293b] leading-snug line-clamp-2">
-                                Sesi Akbar Makan Bareng Jumat Berkah - Warung Beji
-                            </h3>
-                            <p class="mt-1 flex items-center gap-2 text-[10px] font-medium text-[#7e8ba0]">
-                                <span>14 Desember 2026</span>
-                                <span>·</span>
-                                <span>12:00 WIB</span>
-                            </p>
-                        </div>
-                    </div>
-                    <button type="button" class="shrink-0 p-1 text-[#a0aec0] hover:text-[#1e293b]">
-                        @include('partials.icons', ['name' => 'dots-vertical', 'class' => 'h-4 w-4'])
+            @forelse ($communityPosts as $post)
+                <article class="flex items-center gap-3 {{ !$loop->first ? 'mt-4 border-t border-[#edf1f7] pt-4' : '' }}">
+                    <button type="button"
+                            onclick="openPostDetailModal({{ $post->id }})"
+                            class="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-[#eef3ff] ring-2 ring-[#edf1f7]"
+                            aria-label="Lihat postingan {{ $post->user->name }}">
+                        @if ($post->image)
+                            <img src="{{ $post->image }}" alt="" class="h-full w-full object-cover">
+                        @else
+                            <span class="flex h-full w-full items-center justify-center text-sm font-extrabold text-[#4154e8]">
+                                {{ strtoupper(mb_substr($post->user->name, 0, 1)) }}
+                            </span>
+                        @endif
                     </button>
-                </div>
 
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=120&q=80"
-                             alt="Belanja Sembako Grosir"
-                             class="h-12 w-12 rounded-full object-cover shrink-0 ring-2 ring-[#edf1f7]">
-                        <div class="min-w-0">
-                            <h3 class="text-xs font-bold text-[#1e293b] leading-snug">
-                                Belanja Grosir Sembako Komunitas Margonda
-                            </h3>
-                            <p class="mt-1 flex items-center gap-2 text-[10px] font-medium text-[#7e8ba0]">
-                                <span>21 Desember 2026</span>
-                                <span>·</span>
-                                <span>16:00 WIB</span>
-                            </p>
-                        </div>
+                    <div class="min-w-0 flex-1">
+                        <button type="button"
+                                onclick="openPostDetailModal({{ $post->id }})"
+                                class="block w-full text-left text-xs font-bold leading-snug text-[#1e293b] hover:text-[#4154e8]">
+                            <span class="line-clamp-2">{{ $post->caption ?: 'Membagikan aktivitas komunitas' }}</span>
+                        </button>
+                        <p class="mt-1 truncate text-[10px] font-medium text-[#7e8ba0]">
+                            {{ $post->user->username ? '@' . $post->user->username : $post->user->name }}
+                            <span class="mx-1">·</span>
+                            {{ $post->created_at->diffForHumans() }}
+                        </p>
                     </div>
-                    <button type="button" class="shrink-0 p-1 text-[#a0aec0] hover:text-[#1e293b]">
-                        @include('partials.icons', ['name' => 'dots-vertical', 'class' => 'h-4 w-4'])
-                    </button>
+
+                    <span class="flex shrink-0 items-center gap-1 text-[10px] font-bold text-rose-500" aria-label="{{ $post->likes_count }} suka">
+                        @include('partials.icons', ['name' => 'heart-solid', 'class' => 'h-3.5 w-3.5'])
+                        {{ $post->likes_count }}
+                    </span>
+                </article>
+            @empty
+                <div class="rounded-2xl bg-[#f7f8fc] px-4 py-6 text-center">
+                    <p class="text-xs font-bold text-[#1e293b]">Belum ada postingan komunitas</p>
+                    <p class="mt-1 text-[11px] text-[#7e8ba0]">Yuk, jadi yang pertama berbagi cerita!</p>
+                    <a href="{{ route('community') }}" class="mt-3 inline-flex text-xs font-bold text-[#4154e8] hover:underline">
+                        Buka komunitas
+                    </a>
                 </div>
-            </div>
+            @endforelse
         </section>
 
     </div>

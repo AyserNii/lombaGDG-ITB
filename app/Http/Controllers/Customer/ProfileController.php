@@ -18,35 +18,44 @@ use Illuminate\Support\Facades\Auth;
 class ProfileController extends Controller
 {
     private $role;
+
     private $module;
+
     private $page;
+
     private $title;
+
     private $basePath;
+
     private $routePrefix;
+
     private $routeName;
+
     private $lastPageKey;
+
     private $alertKey;
+
     private $sessionNamespace;
 
     public function __construct()
     {
-        $this->role             = 'customer';
-        $this->module           = 'profil';
-        $this->page             = 'Profil Warga';
-        $this->title            = 'Profil Pengguna Gotong Royong';
-        $this->basePath         = 'customer.profile';
-        $this->routePrefix      = 'customer.profil';
-        $this->routeName        = 'customer.profil.index';
-        $this->lastPageKey      = 'customer_profile_last_page';
-        $this->alertKey         = 'customer_profile_alert';
+        $this->role = 'customer';
+        $this->module = 'profil';
+        $this->page = 'Profil Warga';
+        $this->title = 'Profil Pengguna Gotong Royong';
+        $this->basePath = 'customer.profile';
+        $this->routePrefix = 'customer.profil';
+        $this->routeName = 'customer.profil.index';
+        $this->lastPageKey = 'customer_profile_last_page';
+        $this->alertKey = 'customer_profile_alert';
         $this->sessionNamespace = 'customer_profil';
     }
 
     public function index()
     {
         $user = Auth::user();
-        if (!$user) {
-            $user = User::first();
+        if (! $user) {
+            return redirect()->route('login');
         }
 
         return $this->renderProfile($user, true);
@@ -55,9 +64,7 @@ class ProfileController extends Controller
     public function show(string $username)
     {
         $authUser = Auth::user();
-        $targetUser = User::where('username', $username)
-            ->orWhere('id', is_numeric($username) ? (int) $username : 0)
-            ->firstOrFail();
+        $targetUser = User::findByUsernameOrIdOrFail($username);
 
         $isOwnProfile = $authUser && $authUser->id === $targetUser->id;
 
@@ -71,39 +78,44 @@ class ProfileController extends Controller
         // Ambil data melalui MainModel
         $posts = MainModel::list_posts_by_user($targetUser->id);
         $savedPosts = $isOwnProfile ? MainModel::list_saved_posts_by_user($targetUser->id) : collect();
+        $savedPostIds = $savedPosts->pluck('id')->all();
 
         $postsCount = MainModel::total_posts_by_user($targetUser->id);
         $followersCount = MainModel::total_followers_by_user($targetUser->id);
         $followingCount = MainModel::total_following_by_user($targetUser->id);
 
         $isFollowing = false;
-        if (!$isOwnProfile && $authUser) {
+        $isFollowBack = false;
+        if (! $isOwnProfile && $authUser) {
             $isFollowing = MainModel::cek_following($authUser->id, $targetUser->id);
+            $isFollowBack = $targetUser->isFollowing($authUser->id);
         }
 
-        $highlights = $targetUser->storyHighlights()->with('stories')->get();
+        $highlights = $targetUser->profileHighlights();
         $archivedStories = $isOwnProfile
-            ? $targetUser->stories()->whereDoesntHave('highlights')->latest()->get()
+            ? $targetUser->archivedStories()
             : collect();
 
         $datakonten = [
-            'judulcore'         => $this->title,
-            'role'              => $this->role,
-            'module'            => $this->module,
-            'page'              => $this->page,
-            'basePath'          => $this->basePath,
-            'routePrefix'       => $this->routePrefix,
-            'sessionNamespace'  => $this->sessionNamespace,
-            'targetUser'        => $targetUser,
-            'isOwnProfile'      => $isOwnProfile,
-            'posts'             => $posts,
-            'savedPosts'        => $savedPosts,
-            'postsCount'        => $postsCount,
-            'followersCount'    => $followersCount,
-            'followingCount'    => $followingCount,
-            'isFollowing'       => $isFollowing,
-            'highlights'        => $highlights,
-            'archivedStories'   => $archivedStories,
+            'judulcore' => $this->title,
+            'role' => $this->role,
+            'module' => $this->module,
+            'page' => $this->page,
+            'basePath' => $this->basePath,
+            'routePrefix' => $this->routePrefix,
+            'sessionNamespace' => $this->sessionNamespace,
+            'targetUser' => $targetUser,
+            'isOwnProfile' => $isOwnProfile,
+            'posts' => $posts,
+            'savedPosts' => $savedPosts,
+            'savedPostIds' => $savedPostIds,
+            'postsCount' => $postsCount,
+            'followersCount' => $followersCount,
+            'followingCount' => $followingCount,
+            'isFollowing' => $isFollowing,
+            'isFollowBack' => $isFollowBack,
+            'highlights' => $highlights,
+            'archivedStories' => $archivedStories,
         ];
 
         return view('customer.profile.index', $datakonten);
@@ -116,7 +128,7 @@ class ProfileController extends Controller
             return response()->json(['error' => 'Tidak bisa follow akun sendiri.'], 422);
         }
 
-        $targetUser = User::findOrFail($id);
+        $targetUser = User::findByIdOrFail($id);
         $isFollowing = MainModel::cek_following($authUser->id, $id);
 
         if ($isFollowing) {
@@ -130,7 +142,7 @@ class ProfileController extends Controller
                 'user_id' => $targetUser->id,
                 'actor_id' => $authUser->id,
                 'type' => 'follow',
-                'message' => ($authUser->username ?? $authUser->name) . ' started following you.',
+                'message' => ($authUser->username ?? $authUser->name).' started following you.',
                 'is_read' => false,
             ]);
         }
@@ -142,6 +154,7 @@ class ProfileController extends Controller
                 'success' => true,
                 'following' => $newStatus,
                 'followers_count' => $followersCount,
+                'follows_you' => $targetUser->isFollowing($authUser->id),
             ]);
         }
 
@@ -151,7 +164,7 @@ class ProfileController extends Controller
     public function toggleSave(Request $request, int $postId)
     {
         $authUser = Auth::user();
-        $post = Post::findOrFail($postId);
+        $post = Post::findByIdOrFail($postId);
 
         $hasSaved = MainModel::cek_saved($authUser->id, $postId);
 
@@ -194,15 +207,17 @@ class ProfileController extends Controller
     {
         $authUser = Auth::user();
         $rawFollowers = MainModel::list_followers($id);
+        [$followingIds, $followerIds] = $this->authFollowLookup($authUser);
 
-        $followers = collect($rawFollowers)->map(function ($u) use ($authUser) {
+        $followers = collect($rawFollowers)->map(function ($u) use ($authUser, $followingIds, $followerIds) {
             return [
                 'id' => $u->id,
                 'name' => $u->name,
-                'username' => $u->username ?? 'user_' . $u->id,
+                'username' => $u->username ?? 'user_'.$u->id,
                 'avatar' => $u->avatar,
                 'initials' => strtoupper(substr($u->name, 0, 2)),
-                'is_following' => $authUser ? MainModel::cek_following($authUser->id, $u->id) : false,
+                'is_following' => in_array((int) $u->id, $followingIds, true),
+                'follows_you' => in_array((int) $u->id, $followerIds, true),
                 'is_self' => $authUser ? $authUser->id === $u->id : false,
                 'profile_url' => route('profile.show', $u->username ?? $u->id),
             ];
@@ -215,15 +230,17 @@ class ProfileController extends Controller
     {
         $authUser = Auth::user();
         $rawFollowing = MainModel::list_following($id);
+        [$followingIds, $followerIds] = $this->authFollowLookup($authUser);
 
-        $following = collect($rawFollowing)->map(function ($u) use ($authUser) {
+        $following = collect($rawFollowing)->map(function ($u) use ($authUser, $followingIds, $followerIds) {
             return [
                 'id' => $u->id,
                 'name' => $u->name,
-                'username' => $u->username ?? 'user_' . $u->id,
+                'username' => $u->username ?? 'user_'.$u->id,
                 'avatar' => $u->avatar,
                 'initials' => strtoupper(substr($u->name, 0, 2)),
-                'is_following' => $authUser ? MainModel::cek_following($authUser->id, $u->id) : false,
+                'is_following' => in_array((int) $u->id, $followingIds, true),
+                'follows_you' => in_array((int) $u->id, $followerIds, true),
                 'is_self' => $authUser ? $authUser->id === $u->id : false,
                 'profile_url' => route('profile.show', $u->username ?? $u->id),
             ];
@@ -232,12 +249,24 @@ class ProfileController extends Controller
         return response()->json(['users' => $following, 'title' => 'Following']);
     }
 
+    private function authFollowLookup(?User $authUser): array
+    {
+        if (! $authUser) {
+            return [[], []];
+        }
+
+        return [
+            $authUser->followingUserIds(),
+            $authUser->followerUserIds(),
+        ];
+    }
+
     public function storePost(Request $request)
     {
         $request->validate([
             'caption' => 'nullable|string|max:1000',
-            'type'    => 'nullable|string|max:50',
-            'photos'  => 'nullable|array',
+            'type' => 'nullable|string|max:50',
+            'photos' => 'nullable|array',
             'photos.*' => 'nullable|string',
         ]);
 
@@ -246,9 +275,9 @@ class ProfileController extends Controller
 
         if ($request->hasFile('image_files')) {
             foreach ($request->file('image_files') as $file) {
-                $filename = 'post_' . $authUser->id . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $filename = 'post_'.$authUser->id.'_'.uniqid().'.'.$file->getClientOriginalExtension();
                 $file->move(public_path('uploads/posts'), $filename);
-                $storedImages[] = '/uploads/posts/' . $filename;
+                $storedImages[] = '/uploads/posts/'.$filename;
             }
         }
 
@@ -258,9 +287,9 @@ class ProfileController extends Controller
                     $parts = explode(',', $b64);
                     if (isset($parts[1])) {
                         $imgData = base64_decode($parts[1]);
-                        $filename = 'post_' . $authUser->id . '_' . uniqid() . '.jpg';
-                        file_put_contents(public_path('uploads/posts/' . $filename), $imgData);
-                        $storedImages[] = '/uploads/posts/' . $filename;
+                        $filename = 'post_'.$authUser->id.'_'.uniqid().'.jpg';
+                        file_put_contents(public_path('uploads/posts/'.$filename), $imgData);
+                        $storedImages[] = '/uploads/posts/'.$filename;
                     }
                 } elseif (str_starts_with($b64, '/uploads/')) {
                     $storedImages[] = $b64;
@@ -268,7 +297,7 @@ class ProfileController extends Controller
             }
         }
 
-        $primaryImage = !empty($storedImages) ? $storedImages[0] : '/images/placeholder-post.jpg';
+        $primaryImage = ! empty($storedImages) ? $storedImages[0] : '/images/placeholder-post.jpg';
         $caption = trim($request->caption ?? '');
         $type = $request->type ?? 'GOTONG ROYONG';
 
@@ -276,19 +305,19 @@ class ProfileController extends Controller
         if (is_string($tags)) {
             $tags = array_filter(array_map('trim', explode(',', $tags)));
         }
-        if (is_array($tags) && !empty($tags)) {
+        if (is_array($tags) && ! empty($tags)) {
             $cleanTags = [];
             foreach ($tags as $t) {
                 $t = trim($t);
-                if (!empty($t)) {
-                    $cleanTags[] = str_starts_with($t, '#') ? $t : '#' . $t;
+                if (! empty($t)) {
+                    $cleanTags[] = str_starts_with($t, '#') ? $t : '#'.$t;
                 }
             }
-            if (!empty($cleanTags)) {
+            if (! empty($cleanTags)) {
                 $type = $cleanTags[0];
                 foreach ($cleanTags as $ct) {
-                    if (!str_contains($caption, $ct)) {
-                        $caption .= ($caption ? ' ' : '') . $ct;
+                    if (! str_contains($caption, $ct)) {
+                        $caption .= ($caption ? ' ' : '').$ct;
                     }
                 }
             }
@@ -296,9 +325,9 @@ class ProfileController extends Controller
 
         $post = Post::create([
             'user_id' => $authUser->id,
-            'image'   => $primaryImage,
+            'image' => $primaryImage,
             'caption' => $caption,
-            'type'    => $type,
+            'type' => $type,
             'likes_count' => 0,
             'comments_count' => 0,
         ]);
@@ -307,7 +336,7 @@ class ProfileController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Postingan baru berhasil dibagikan!',
-                'post'    => [
+                'post' => [
                     'id' => $post->id,
                     'image' => $post->image,
                     'caption' => $post->caption,

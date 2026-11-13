@@ -37,5 +37,29 @@ class Comment extends Model
     {
         return $this->hasMany(Comment::class, 'parent_id')->with('user')->oldest();
     }
+
+    public static function topLevelForPost(int $postId, bool $withReplyCounts = false, string $sort = 'newest')
+    {
+        $query = static::where('post_id', $postId)
+            ->whereNull('parent_id')
+            ->with(['user', 'replies.user']);
+
+        if ($withReplyCounts) {
+            $query->withCount('replies');
+        }
+
+        match ($sort) {
+            'oldest' => $query->oldest(),
+            'top' => $query->orderByDesc('replies_count')->latest(),
+            default => $query->latest(),
+        };
+
+        return $query->get();
+    }
+
+    public static function withUserAndRepliesOrFail(int $commentId): self
+    {
+        return static::with(['user', 'replies.user'])->findOrFail($commentId);
+    }
 }
 

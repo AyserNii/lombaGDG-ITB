@@ -16,6 +16,7 @@ class Notification extends Model
         'type',
         'message',
         'post_id',
+        'comment_id',
         'is_read',
     ];
 
@@ -40,5 +41,9 @@ class Notification extends Model
     {
         return $this->belongsTo(Post::class);
     }
-}
 
+    public function comment(): BelongsTo
+    {
+        return $this->belongsTo(Comment::class);
+    }
+}

@@ -11,6 +11,7 @@ class StoryModel extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     protected $table = 'stories';
 
     public static function tambah_story($userId, $image, $caption = null)
@@ -47,12 +48,14 @@ class StoryModel extends Model
         return $query;
     }
 
-    public static function tambah_highlight($userId, $title, array $storyIds)
+    public static function tambah_highlight($userId, $title, array $storyIds, ?string $thumbnailPath = null, ?int $thumbnailStoryId = null)
     {
-        return DB::transaction(function () use ($userId, $title, $storyIds) {
+        return DB::transaction(function () use ($userId, $title, $storyIds, $thumbnailPath, $thumbnailStoryId) {
             $highlightId = DB::table('story_highlights')->insertGetId([
                 'user_id' => $userId,
                 'title' => $title,
+                'thumbnail_path' => $thumbnailPath,
+                'thumbnail_story_id' => $thumbnailStoryId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -82,4 +85,3 @@ class StoryModel extends Model
         return $query;
     }
 }
-

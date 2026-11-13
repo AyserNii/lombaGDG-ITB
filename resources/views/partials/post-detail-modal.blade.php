@@ -97,15 +97,23 @@
             <div class="p-4 border-t border-slate-100 shrink-0 bg-white space-y-2">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <!-- Like Button -->
-                        <button type="button" onclick="toggleDetailLike()" id="detail-like-btn"
-                                class="flex items-center gap-1.5 text-slate-600 hover:text-rose-500 transition">
-                            <span id="detail-like-icon">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                                </svg>
-                            </span>
-                        </button>
+                        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1">
+                            <button type="button" onclick="toggleDetailReaction('like')" id="detail-like-btn"
+                                    class="inline-flex items-center gap-1 text-slate-600 transition hover:text-emerald-700" aria-label="Suka">
+                                <span id="detail-like-icon">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 10v12m0-12 4-8a3 3 0 0 1 3 3v3h5a2 2 0 0 1 2 2l-1.5 9a2 2 0 0 1-2 2H7m0-12H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg>
+                                </span>
+                                <span id="detail-likes-count" class="text-xs font-bold">0</span>
+                            </button>
+                            <span class="h-5 w-px bg-slate-200"></span>
+                            <button type="button" onclick="toggleDetailReaction('dislike')" id="detail-dislike-btn"
+                                    class="inline-flex items-center gap-1 text-slate-600 transition hover:text-rose-700" aria-label="Tidak suka">
+                                <span id="detail-dislike-icon">
+                                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 14V2m0 12-4 8a3 3 0 0 1-3-3v-3H5a2 2 0 0 1-2-2l1.5-9a2 2 0 0 1 2-2H17m0 12h3a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>
+                                </span>
+                                <span id="detail-dislikes-count" class="text-xs font-bold">0</span>
+                            </button>
+                        </div>
 
                         <!-- Focus Comment Input -->
                         <button type="button" onclick="document.getElementById('detail-comment-input').focus()"
@@ -134,7 +142,6 @@
 
                 <!-- Likes count & Timestamp -->
                 <div>
-                    <span id="detail-likes-count" class="text-xs font-black text-slate-900">0 suka</span>
                     <span id="detail-created-date" class="block text-[10px] text-slate-400 mt-0.5 font-medium"></span>
                 </div>
             </div>
@@ -391,7 +398,7 @@ function renderPostDetailModal(post, comments) {
         : `<div class="flex h-8 w-8 items-center justify-center rounded-full bg-[#4154e8] text-white text-[10px] font-black">${post.author_initials}</div>`;
 
     // Like state
-    updateDetailLikeState(post.is_liked, post.likes_count);
+    updateDetailLikeState(post.reaction, post.likes_count, post.dislikes_count);
 
     // Save state
     updateDetailSaveState(post.is_saved);
@@ -403,24 +410,28 @@ function renderPostDetailModal(post, comments) {
     renderDetailComments(comments);
 }
 
-function updateDetailLikeState(isLiked, count) {
+function updateDetailLikeState(reaction, likesCount, dislikesCount) {
     const likeBtn = document.getElementById('detail-like-btn');
     const likeIcon = document.getElementById('detail-like-icon');
-    const countEl = document.getElementById('detail-likes-count');
+    const dislikeBtn = document.getElementById('detail-dislike-btn');
+    const dislikeIcon = document.getElementById('detail-dislike-icon');
 
-    countEl.innerText = count + ' suka';
+    document.getElementById('detail-likes-count').textContent = likesCount;
+    document.getElementById('detail-dislikes-count').textContent = dislikesCount;
 
-    if (isLiked) {
-        likeBtn.className = 'flex items-center gap-1.5 text-rose-500 transition scale-105';
-        likeIcon.innerHTML = `<svg class="h-6 w-6 text-rose-500 fill-rose-500 animate-scale-up" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
-    } else {
-        likeBtn.className = 'flex items-center gap-1.5 text-slate-600 hover:text-rose-500 transition';
-        likeIcon.innerHTML = `<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>`;
-    }
+    likeBtn.className = `relative inline-flex items-center gap-1 transition ${reaction === 'like' ? 'text-[#4154e8]' : 'text-slate-600 hover:text-[#4154e8]'}`;
+    dislikeBtn.className = `relative inline-flex items-center gap-1 transition ${reaction === 'dislike' ? 'text-[#4154e8]' : 'text-slate-600 hover:text-[#4154e8]'}`;
+    likeBtn.setAttribute('aria-pressed', reaction === 'like' ? 'true' : 'false');
+    dislikeBtn.setAttribute('aria-pressed', reaction === 'dislike' ? 'true' : 'false');
+    likeIcon.innerHTML = `<svg class="h-5 w-5 ${reaction === 'like' ? 'fill-blue-100' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 10v12m0-12 4-8a3 3 0 0 1 3 3v3h5a2 2 0 0 1 2 2l-1.5 9a2 2 0 0 1-2 2H7m0-12H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg>`;
+    dislikeIcon.innerHTML = `<svg class="h-5 w-5 ${reaction === 'dislike' ? 'fill-blue-100' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M17 14V2m0 12-4 8a3 3 0 0 1-3-3v-3H5a2 2 0 0 1-2-2l1.5-9A2 2 0 0 1 4.5 3H17m0 11h3a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>`;
 }
 
 function updateDetailSaveState(isSaved) {
     const saveBtn = document.getElementById('detail-save-btn');
+    if (!saveBtn) return;
+    saveBtn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+    saveBtn.title = isSaved ? 'Hapus dari simpanan' : 'Simpan ke koleksi privat';
     if (isSaved) {
         saveBtn.className = 'text-[#4154e8] transition scale-110';
         saveBtn.innerHTML = `<svg class="h-5 w-5 fill-[#4154e8]" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>`;
@@ -430,8 +441,26 @@ function updateDetailSaveState(isSaved) {
     }
 }
 
-function toggleDetailLike() {
-    if (!currentDetailPostId) return;
+function toggleDetailReaction(reaction) {
+    if (!currentDetailPostId || !currentDetailPostData) return;
+
+    const postId = currentDetailPostId;
+    const previous = {
+        reaction: currentDetailPostData.reaction || null,
+        likes: Number(currentDetailPostData.likes_count),
+        dislikes: Number(currentDetailPostData.dislikes_count),
+    };
+    const nextReaction = previous.reaction === reaction ? null : reaction;
+    const nextLikes = previous.likes + (nextReaction === 'like' ? 1 : 0) - (previous.reaction === 'like' ? 1 : 0);
+    const nextDislikes = previous.dislikes + (nextReaction === 'dislike' ? 1 : 0) - (previous.reaction === 'dislike' ? 1 : 0);
+    const sequence = (window.detailReactionRequestSequence || 0) + 1;
+    window.detailReactionRequestSequence = sequence;
+    currentDetailPostData.reaction = nextReaction;
+    currentDetailPostData.likes_count = nextLikes;
+    currentDetailPostData.dislikes_count = nextDislikes;
+    updateDetailLikeState(nextReaction, nextLikes, nextDislikes);
+    window.animateReactionParticles(document.getElementById(reaction === 'like' ? 'detail-like-btn' : 'detail-dislike-btn'), reaction);
+    updatePostReactionFeed(postId, nextReaction, nextLikes, nextDislikes);
 
     fetch('/posts/' + currentDetailPostId + '/like', {
         method: 'POST',
@@ -439,21 +468,65 @@ function toggleDetailLike() {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify({ reaction })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            updateDetailLikeState(data.liked, data.likes_count);
-            // Sesuai permintaan user: like postingan hening tanpa modal notif pop-up
-        }
+    .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Reaksi gagal disimpan.');
+        return data;
+    })
+    .then((data) => {
+        if (window.detailReactionRequestSequence !== sequence || currentDetailPostId !== postId) return;
+        currentDetailPostData.reaction = data.reaction;
+        currentDetailPostData.likes_count = data.likes_count;
+        currentDetailPostData.dislikes_count = data.dislikes_count;
+        updateDetailLikeState(data.reaction, data.likes_count, data.dislikes_count);
+        updatePostReactionFeed(postId, data.reaction, data.likes_count, data.dislikes_count);
+    })
+    .catch((error) => {
+        if (window.detailReactionRequestSequence !== sequence || currentDetailPostId !== postId) return;
+        Object.assign(currentDetailPostData, {
+            reaction: previous.reaction,
+            likes_count: previous.likes,
+            dislikes_count: previous.dislikes,
+        });
+        updateDetailLikeState(previous.reaction, previous.likes, previous.dislikes);
+        updatePostReactionFeed(postId, previous.reaction, previous.likes, previous.dislikes);
+        window.alert(error.message || 'Reaksi gagal disimpan. Coba lagi.');
+    });
+}
+
+function updatePostReactionFeed(postId, reaction, likes, dislikes) {
+    const likesCount = document.getElementById('like-count-' + postId);
+    const dislikesCount = document.getElementById('dislike-count-' + postId);
+    if (likesCount) likesCount.textContent = likes;
+    if (dislikesCount) dislikesCount.textContent = dislikes;
+
+    document.querySelectorAll(`.post-reaction-button[data-post-id="${postId}"]`).forEach((button) => {
+        const active = button.dataset.reaction === reaction;
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        button.classList.toggle('bg-emerald-50', active && reaction === 'like');
+        button.classList.toggle('text-emerald-700', active && reaction === 'like');
+        button.classList.toggle('bg-rose-50', active && reaction === 'dislike');
+        button.classList.toggle('text-rose-700', active && reaction === 'dislike');
+        button.classList.toggle('text-slate-600', !active);
     });
 }
 
 function toggleDetailSave() {
-    if (!currentDetailPostId) return;
+    if (!currentDetailPostId || !currentDetailPostData) return;
 
-    fetch('/posts/' + currentDetailPostId + '/toggle-save', {
+    const postId = currentDetailPostId;
+    const oldSaved = Boolean(currentDetailPostData.is_saved);
+    const nextSaved = !oldSaved;
+    const sequence = (window.detailSaveRequestSequence || 0) + 1;
+    window.detailSaveRequestSequence = sequence;
+    currentDetailPostData.is_saved = nextSaved;
+    updateDetailSaveState(nextSaved);
+    window.setPostSavedState(postId, nextSaved);
+
+    fetch('/posts/' + postId + '/toggle-save', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -461,11 +534,23 @@ function toggleDetailSave() {
             'Accept': 'application/json'
         }
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            updateDetailSaveState(data.saved);
-        }
+    .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || data.error || 'Simpanan gagal diperbarui.');
+        return data;
+    })
+    .then((data) => {
+        if (window.detailSaveRequestSequence !== sequence || currentDetailPostId !== postId) return;
+        currentDetailPostData.is_saved = data.saved;
+        updateDetailSaveState(data.saved);
+        window.setPostSavedState(postId, data.saved);
+    })
+    .catch((error) => {
+        if (window.detailSaveRequestSequence !== sequence || currentDetailPostId !== postId) return;
+        currentDetailPostData.is_saved = oldSaved;
+        updateDetailSaveState(oldSaved);
+        window.setPostSavedState(postId, oldSaved);
+        window.alert(error.message || 'Simpanan gagal diperbarui. Coba lagi.');
     });
 }
 
@@ -749,4 +834,3 @@ function toggleFollowAuthorFromDetail() {
     });
 }
 </script>
-

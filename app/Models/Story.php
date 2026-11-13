@@ -31,4 +31,29 @@ class Story extends Model
     {
         return $this->belongsToMany(StoryHighlight::class, 'story_highlight_stories')->withTimestamps();
     }
+
+    public static function activeWithUsers()
+    {
+        return static::with('user')
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->get();
+    }
+
+    public static function highlightedIds(): array
+    {
+        return static::whereHas('highlights')->pluck('id')->all();
+    }
+
+    public static function countActive(): int
+    {
+        return static::where('expires_at', '>', now())->count();
+    }
+
+    public static function ownedByWithIds(int $userId, array $storyIds)
+    {
+        return static::where('user_id', $userId)
+            ->whereIn('id', $storyIds)
+            ->get();
+    }
 }

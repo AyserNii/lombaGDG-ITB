@@ -2,6 +2,7 @@
 
 namespace App\Models\Customer;
 
+use App\Models\Notification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +12,41 @@ class NotificationModel extends Model
     use HasFactory;
 
     public $timestamps = false;
+
     protected $table = 'notifications';
+
+    public static function listForUser(int $userId, string $filter = 'all', ?int $limit = null)
+    {
+        $query = Notification::with(['actor', 'post.user', 'comment'])
+            ->where('user_id', $userId)
+            ->latest();
+
+        if (in_array($filter, ['follows', 'comments', 'likes', 'messages'], true)) {
+            $query->where('type', match ($filter) {
+                'follows' => 'follow',
+                'comments' => 'comment',
+                'likes' => 'like',
+                'messages' => 'message',
+            });
+        } elseif ($filter === 'following') {
+            $query->whereIn('actor_id', function ($following) use ($userId) {
+                $following->select('following_id')
+                    ->from('follows')
+                    ->where('follower_id', $userId);
+            });
+        }
+
+        if ($limit !== null) {
+            $query->take($limit);
+        }
+
+        return $query->get();
+    }
+
+    public static function deleteAllForUser(int $userId): int
+    {
+        return Notification::where('user_id', $userId)->delete();
+    }
 
     public static function list_notifikasi($userId, $filter = 'all', $limit = 50)
     {
@@ -35,6 +70,8 @@ class NotificationModel extends Model
             $builder->where('notifications.type', 'comment');
         } elseif ($filter === 'likes') {
             $builder->where('notifications.type', 'like');
+        } elseif ($filter === 'messages') {
+            $builder->where('notifications.type', 'message');
         } elseif ($filter === 'following') {
             $subFollowing = DB::table('follows')
                 ->where('follower_id', $userId)
@@ -96,4 +133,3 @@ class NotificationModel extends Model
             ->delete();
     }
 }
-

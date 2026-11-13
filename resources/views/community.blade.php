@@ -165,9 +165,10 @@
                         <span id="story-ring-{{ $authUser->id }}"
                               class="story-ring block rounded-full p-[2px] ring-2 {{ $myActiveStory ? 'ring-rose-500 ring-offset-2' : 'ring-slate-200' }} transition">
                             @if ($myActiveStory)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($myActiveStory->image) }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                                <img src="{{ route('stories.image', $myActiveStory) }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
                             @elseif ($authUser->avatar)
-                                <img src="{{ $authUser->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                                <img src="{{ $authUser->avatar }}" alt="" onerror="this.classList.add('hidden');this.nextElementSibling.classList.remove('hidden');this.nextElementSibling.classList.add('flex')" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                                <span class="hidden h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">{{ $userInitials }}</span>
                             @else
                                 <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
                                     {{ $userInitials }}
@@ -194,13 +195,8 @@
                             class="story-user-btn flex w-16 shrink-0 flex-col items-center gap-2 group">
                         <span id="story-ring-{{ $firstStory->user->id }}"
                               class="story-ring rounded-full p-[2.5px] ring-2 ring-rose-500 ring-offset-2 transition group-hover:scale-105">
-                            @if ($firstStory->user->avatar)
-                                <img src="{{ $firstStory->user->avatar }}" alt="" class="h-14 w-14 rounded-full border-2 border-white object-cover">
-                            @else
-                                <span class="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">
-                                    {{ strtoupper(mb_substr($firstStory->user->name, 0, 2)) }}
-                                </span>
-                            @endif
+                            <img src="{{ route('stories.image', $firstStory) }}" alt="" onerror="this.classList.add('hidden');this.nextElementSibling.classList.remove('hidden');this.nextElementSibling.classList.add('flex')" class="h-14 w-14 rounded-full border-2 border-white object-cover">
+                            <span class="hidden h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#4154e8] text-sm font-extrabold text-white">{{ strtoupper(mb_substr($firstStory->user->name, 0, 2)) }}</span>
                         </span>
                         <span class="w-16 truncate text-center text-[11px] font-semibold text-slate-700">{{ $firstStory->user->username ? '@' . $firstStory->user->username : $firstStory->user->name }}</span>
                     </button>
@@ -234,7 +230,7 @@
                         @endif
                         <div>
                             <p class="font-extrabold text-sm text-slate-900 leading-tight">{{ $post->user->username ? '@' . $post->user->username : $post->user->name }}</p>
-                            <p class="text-[11px] text-slate-400">{{ $post->user->role }} Â· {{ $post->created_at->diffForHumans() }}</p>
+                            <p class="text-[11px] text-slate-400">{{ $post->user->role }} · {{ $post->created_at->diffForHumans() }}</p>
                         </div>
                     </div>
 
@@ -254,38 +250,38 @@
                 </div>
 
                 <div class="flex items-center justify-between px-4 py-3 text-sm font-semibold border-t border-slate-100">
-                    <div class="flex items-center gap-5">
+                    <div class="flex flex-wrap items-center gap-2">
                         @php
-                            $isLiked = $post->isLikedBy(Auth::user());
-                            $isSaved = Auth::user() ? Auth::user()->savedPosts()->where('post_id', $post->id)->exists() : false;
+                            $reaction = $post->viewer_reaction;
+                            $isSaved = $post->viewer_saved;
                         @endphp
-                        {{-- Like Button --}}
-                        <button type="button"
-                                onclick="togglePostLike({{ $post->id }}, this)"
-                                class="flex items-center gap-1.5 transition {{ $isLiked ? 'text-rose-500 font-bold' : 'text-slate-500 hover:text-rose-500' }}"
-                                id="like-btn-{{ $post->id }}">
-                            <span class="like-icon flex items-center justify-center">
-                                @if ($isLiked)
-                                    @include('partials.icons', ['name' => 'heart-solid', 'class' => 'h-5 w-5 text-rose-500 fill-rose-500'])
-                                @else
-                                    @include('partials.icons', ['name' => 'heart', 'class' => 'h-5 w-5 text-slate-500'])
-                                @endif
-                            </span>
-                            <span class="like-count text-xs font-bold" id="like-count-{{ $post->id }}">{{ $post->likes_count }}</span>
-                        </button>
+                        <div class="inline-flex items-center rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+                            <button type="button" data-post-id="{{ $post->id }}" data-reaction="like" aria-pressed="{{ $reaction === 'like' ? 'true' : 'false' }}"
+                                    onclick="togglePostReaction({{ $post->id }}, 'like')"
+                                    class="post-reaction-button inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition {{ $reaction === 'like' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50' }}">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 10v12m0-12 4-8a3 3 0 0 1 3 3v3h5a2 2 0 0 1 2 2l-1.5 9a2 2 0 0 1-2 2H7m0-12H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg>
+                                <span>Suka</span>
+                                <span id="like-count-{{ $post->id }}">{{ $post->likes_total }}</span>
+                            </button>
 
-                        {{-- Comment Button (Threads/X style) --}}
-                        <button type="button"
-                                onclick="openCommentsModal({{ $post->id }})"
-                                class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition"
-                                id="comment-btn-{{ $post->id }}">
-                            @include('partials.icons', ['name' => 'comment', 'class' => 'h-5 w-5'])
-                            <span class="comment-count text-xs font-bold" id="comment-count-{{ $post->id }}">{{ $post->comments_count }}</span>
-                        </button>
+                            <span class="mx-1 h-5 w-px bg-slate-200"></span>
+                            <button type="button" data-post-id="{{ $post->id }}" data-reaction="dislike" aria-pressed="{{ $reaction === 'dislike' ? 'true' : 'false' }}"
+                                    onclick="togglePostReaction({{ $post->id }}, 'dislike')"
+                                    class="post-reaction-button inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold transition {{ $reaction === 'dislike' ? 'bg-rose-50 text-rose-700' : 'text-slate-600 hover:bg-slate-50' }}">
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 14V2m0 12-4 8a3 3 0 0 1-3-3v-3H5a2 2 0 0 1-2-2l1.5-9a2 2 0 0 1 2-2H17m0 12h3a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/></svg>
+                                <span>Tidak suka</span>
+                                <span id="dislike-count-{{ $post->id }}">{{ $post->dislikes_total }}</span>
+                            </button>
+                        </div>
 
-                        {{-- DM author --}}
+                        <a href="{{ route('community.posts.show', ['id' => $post->id]) }}#komentar"
+                           class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 shadow-sm transition hover:border-emerald-600 hover:text-emerald-700">
+                            @include('partials.icons', ['name' => 'comment', 'class' => 'h-4 w-4'])
+                            <span><span id="comment-count-{{ $post->id }}">{{ $post->comments_count }}</span> Komentar</span>
+                        </a>
+
                         <a href="{{ route('chat', ['user' => $post->user->username ?? $post->user->id]) }}"
-                           class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition text-xs font-semibold">
+                           class="flex items-center gap-1.5 text-slate-500 hover:text-[#4154e8] transition text-xs font-semibold px-2">
                             @include('partials.icons', ['name' => 'send', 'class' => 'h-4 w-4'])
                             <span>Kirim DM</span>
                         </a>
@@ -293,6 +289,9 @@
 
                     <!-- Bookmark / Save button (Private Collection) -->
                     <button type="button"
+                            data-save-post-id="{{ $post->id }}"
+                            data-saved="{{ $isSaved ? 'true' : 'false' }}"
+                            aria-pressed="{{ $isSaved ? 'true' : 'false' }}"
                             onclick="togglePostSave({{ $post->id }}, this)"
                             class="transition {{ $isSaved ? 'text-[#4154e8]' : 'text-slate-400 hover:text-[#4154e8]' }}"
                             title="{{ $isSaved ? 'Hapus dari simpanan' : 'Simpan ke koleksi privat' }}">
@@ -320,6 +319,7 @@
                 @foreach ($suggestedUsers as $person)
                     @php
                         $isFollowed = Auth::user()->isFollowing($person->id);
+                        $followsYou = $person->isFollowing(Auth::id());
                     @endphp
                     <div class="flex items-start gap-3">
                         <a href="{{ route('profile.show', $person->username ?? $person->id) }}" class="shrink-0">
@@ -335,11 +335,12 @@
                             <a href="{{ route('profile.show', $person->username ?? $person->id) }}" class="truncate text-xs font-bold text-slate-900 hover:underline block leading-tight">
                                 {{ $person->username ? '@' . $person->username : $person->name }}
                             </a>
-                            <p class="text-[10px] leading-4 text-slate-400 truncate">{{ $person->name }} Â· {{ $person->location }}</p>
+                            <p class="text-[10px] leading-4 text-slate-400 truncate">{{ $person->name }} · {{ $person->location }}</p>
                             <button type="button"
+                                    data-follows-you="{{ $followsYou ? 'true' : 'false' }}"
                                     onclick="toggleFollowSide({{ $person->id }}, this)"
                                     class="mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm {{ $isFollowed ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-[#4154e8] text-white hover:bg-[#3243d4]' }}">
-                                {{ $isFollowed ? 'Following' : 'Follow' }}
+                                {{ $isFollowed ? 'Following' : ($followsYou ? 'Follow back' : 'Follow') }}
                             </button>
                         </div>
                     </div>
@@ -352,7 +353,7 @@
             <h2 class="text-sm font-extrabold text-slate-900">Sesi yang lagi ramai</h2>
             <div class="mt-4 space-y-3">
                 @foreach ([
-                    ['title' => 'Warung Geprek 88', 'sub' => '4/5 orang Â· tutup 20 menit lagi', 'icon' => 'food', 'iconBg' => 'bg-orange-50 text-orange-500'],
+                    ['title' => 'Warung Geprek 88', 'sub' => '4/5 orang · tutup 20 menit lagi', 'icon' => 'food', 'iconBg' => 'bg-orange-50 text-orange-500'],
                     ['title' => 'Alfamart Cluster 2', 'sub' => 'Kurang Rp 35rb ke minimum', 'icon' => 'cart', 'iconBg' => 'bg-emerald-50 text-emerald-500'],
                     ['title' => 'Kirim arah UI Depok', 'sub' => '2 paket, muat 1 lagi', 'icon' => 'truck', 'iconBg' => 'bg-blue-50 text-blue-500'],
                 ] as $sess)
@@ -451,7 +452,10 @@
             <!-- Active Story Header -->
             <div class="absolute top-6 inset-x-3.5 z-30 flex items-center justify-between text-white drop-shadow-md">
                 <div class="flex items-center gap-2.5">
-                    <img id="story-viewer-avatar" src="" alt="" class="h-9 w-9 rounded-full object-cover ring-2 ring-white/50">
+                    <span class="relative block h-9 w-9 shrink-0">
+                        <img id="story-viewer-avatar" src="" alt="" class="h-9 w-9 rounded-full object-cover ring-2 ring-white/50">
+                        <span id="story-viewer-avatar-fallback" class="absolute inset-0 hidden items-center justify-center rounded-full bg-[#4154e8] text-xs font-black text-white ring-2 ring-white/50"></span>
+                    </span>
                     <div class="flex items-center gap-2 leading-tight">
                         <span id="story-viewer-name" class="text-xs font-extrabold text-white hover:underline cursor-pointer"></span>
                         <span class="text-white/40 text-xs">·</span>
@@ -574,7 +578,7 @@
                         <div class="flex items-center gap-1.5 flex-wrap">
                             <span id="modal-post-author-name" class="text-xs font-extrabold text-slate-900 leading-tight"></span>
                             <span id="modal-post-author-handle" class="text-xs font-medium text-slate-400"></span>
-                            <span class="text-slate-300">Â·</span>
+                            <span class="text-slate-300">·</span>
                             <span id="modal-post-time" class="text-xs text-slate-400 font-medium"></span>
                         </div>
                         <p id="modal-post-caption" class="text-xs sm:text-sm text-slate-800 mt-1 leading-relaxed whitespace-pre-wrap"></p>
@@ -627,35 +631,74 @@
 
 <script>
 let activeCommentsPostId = null;
+const reactionRequestSequence = new Map();
+const saveRequestSequence = new Map();
 
-function togglePostLike(postId, btn) {
+function togglePostReaction(postId, reaction) {
+    const buttons = [...document.querySelectorAll(`.post-reaction-button[data-post-id="${postId}"]`)];
+    const oldReaction = buttons.find((button) => button.getAttribute('aria-pressed') === 'true')?.dataset.reaction || null;
+    const oldLikes = Number(document.getElementById('like-count-' + postId)?.textContent || 0);
+    const oldDislikes = Number(document.getElementById('dislike-count-' + postId)?.textContent || 0);
+    const nextReaction = oldReaction === reaction ? null : reaction;
+    const nextLikes = oldLikes + (nextReaction === 'like' ? 1 : 0) - (oldReaction === 'like' ? 1 : 0);
+    const nextDislikes = oldDislikes + (nextReaction === 'dislike' ? 1 : 0) - (oldReaction === 'dislike' ? 1 : 0);
+    const sequence = (reactionRequestSequence.get(postId) || 0) + 1;
+    reactionRequestSequence.set(postId, sequence);
+
+    window.animateReactionParticles(buttons.find((button) => button.dataset.reaction === reaction), reaction);
+    updatePostReactionUI(postId, nextReaction, nextLikes, nextDislikes);
+
     fetch('/posts/' + postId + '/like', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json'
+        },
+        body: JSON.stringify({ reaction })
+    })
+    .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Reaksi gagal disimpan.');
+        return data;
+    })
+    .then(data => {
+        if (reactionRequestSequence.get(postId) === sequence) {
+            updatePostReactionUI(postId, data.reaction, data.likes_count, data.dislikes_count);
         }
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            const countEl = document.getElementById('like-count-' + postId);
-            if (countEl) countEl.textContent = data.likes_count;
-
-            const iconWrap = btn.querySelector('.like-icon');
-            if (data.liked) {
-                btn.className = 'flex items-center gap-1.5 transition text-rose-500 font-bold';
-                iconWrap.innerHTML = `<svg class="h-5 w-5 text-rose-500 fill-rose-500" viewBox="0 0 24 24"><path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
-            } else {
-                btn.className = 'flex items-center gap-1.5 transition text-slate-500 hover:text-rose-500';
-                iconWrap.innerHTML = `<svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.6-7 10-7 10z"/></svg>`;
-            }
+    .catch((error) => {
+        if (reactionRequestSequence.get(postId) === sequence) {
+            updatePostReactionUI(postId, oldReaction, oldLikes, oldDislikes);
+            window.alert(error.message || 'Reaksi gagal disimpan. Coba lagi.');
         }
     });
 }
 
+function updatePostReactionUI(postId, reaction, likes, dislikes) {
+    const likeCount = document.getElementById('like-count-' + postId);
+    const dislikeCount = document.getElementById('dislike-count-' + postId);
+    if (likeCount) likeCount.textContent = likes;
+    if (dislikeCount) dislikeCount.textContent = dislikes;
+
+    document.querySelectorAll(`.post-reaction-button[data-post-id="${postId}"]`).forEach((button) => {
+        const active = button.dataset.reaction === reaction;
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        button.classList.toggle('bg-emerald-50', active && button.dataset.reaction === 'like');
+        button.classList.toggle('text-emerald-700', active && button.dataset.reaction === 'like');
+        button.classList.toggle('bg-rose-50', active && button.dataset.reaction === 'dislike');
+        button.classList.toggle('text-rose-700', active && button.dataset.reaction === 'dislike');
+        button.classList.toggle('text-slate-600', !active);
+    });
+}
+
 function togglePostSave(postId, btn) {
+    const oldSaved = btn.dataset.saved === 'true';
+    const nextSaved = !oldSaved;
+    const sequence = (saveRequestSequence.get(postId) || 0) + 1;
+    saveRequestSequence.set(postId, sequence);
+    window.setPostSavedState(postId, nextSaved);
+
     fetch('/posts/' + postId + '/toggle-save', {
         method: 'POST',
         headers: {
@@ -664,16 +707,20 @@ function togglePostSave(postId, btn) {
             'Accept': 'application/json'
         }
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            if (data.saved) {
-                btn.className = 'transition text-[#4154e8] hover:opacity-80';
-                btn.title = 'Hapus dari simpanan';
-            } else {
-                btn.className = 'transition text-slate-400 hover:text-[#4154e8]';
-                btn.title = 'Simpan ke koleksi privat';
-            }
+    .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || data.error || 'Simpanan gagal diperbarui.');
+        return data;
+    })
+    .then((data) => {
+        if (saveRequestSequence.get(postId) === sequence) {
+            window.setPostSavedState(postId, data.saved);
+        }
+    })
+    .catch((error) => {
+        if (saveRequestSequence.get(postId) === sequence) {
+            window.setPostSavedState(postId, oldSaved);
+            window.alert(error.message || 'Simpanan gagal diperbarui. Coba lagi.');
         }
     });
 }
@@ -795,7 +842,7 @@ function renderCommentItem(c, isReply = false) {
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <span class="text-xs font-extrabold text-slate-900 leading-tight">${c.user_name}</span>
                                 <span class="text-[11px] text-slate-400 font-medium">@${c.user_username}</span>
-                                <span class="text-slate-300">Â·</span>
+                                <span class="text-slate-300">·</span>
                                 <span class="text-[10px] text-slate-400 font-medium">${c.created_at}</span>
                             </div>
                             ${c.can_delete ? `
@@ -1008,11 +1055,22 @@ function openStory(index) {
     imgEl.src = story.image;
 
     const avatarEl = document.getElementById('story-viewer-avatar');
+    const avatarFallback = document.getElementById('story-viewer-avatar-fallback');
+    avatarEl.classList.remove('hidden');
+    avatarFallback.classList.add('hidden');
+    avatarFallback.classList.remove('flex');
+    avatarFallback.textContent = story.user_initials || story.name.slice(0, 2).toUpperCase();
+    avatarEl.onerror = () => {
+        avatarEl.classList.add('hidden');
+        avatarFallback.classList.remove('hidden');
+        avatarFallback.classList.add('flex');
+    };
     if (story.user_avatar) {
         avatarEl.src = story.user_avatar;
-        avatarEl.classList.remove('hidden');
     } else {
-        avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(story.name)}&background=4154e8&color=fff&bold=true`;
+        avatarEl.classList.add('hidden');
+        avatarFallback.classList.remove('hidden');
+        avatarFallback.classList.add('flex');
     }
 
     document.getElementById('story-viewer-name').textContent = story.username ? '@' + story.username : story.name;
@@ -1256,12 +1314,13 @@ function toggleFollowSide(userId, btn) {
                 btn.className = 'mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm bg-slate-100 text-slate-700 hover:bg-slate-200';
                 btn.innerText = 'Following';
             } else {
-                btn.className = 'mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm bg-[#4154e8] text-white hover:bg-[#3243d4]';
-                btn.innerText = 'Follow';
+                btn.className = data.follows_you
+                    ? 'mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm bg-[#4154e8] text-white hover:bg-[#3243d4]'
+                    : 'mt-1.5 flex items-center gap-1 rounded-xl px-3 py-1 text-xs font-bold transition shadow-sm bg-slate-100 text-slate-700 hover:bg-slate-200';
+                btn.innerText = data.follows_you ? 'Follow back' : 'Follow';
             }
         }
     });
 }
 </script>
 @endsection
-

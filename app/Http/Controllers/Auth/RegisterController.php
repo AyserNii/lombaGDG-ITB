@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\CountryList;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ class RegisterController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('auth.register');
+        return view('auth.register', ['countries' => CountryList::options()]);
     }
 
     public function register(Request $request)
@@ -25,19 +26,25 @@ class RegisterController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
-            'location' => 'nullable|string|max:255',
+            'location' => 'required|string|max:255',
+            'location_country' => 'required|string|max:100',
+            'location_latitude' => 'nullable|numeric|between:-90,90|required_with:location_longitude',
+            'location_longitude' => 'nullable|numeric|between:-180,180|required_with:location_latitude',
             'phone' => 'nullable|string|max:20',
         ]);
 
-        $location = $validated['location'] ?? 'Beji, Depok';
+        $location = $validated['location'];
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
-            'role' => 'Customer · ' . $location,
+            'role' => 'Customer · '.$location,
             'role_type' => 'customer',
             'location' => $location,
+            'location_country' => $validated['location_country'],
+            'location_latitude' => $validated['location_latitude'] ?? null,
+            'location_longitude' => $validated['location_longitude'] ?? null,
             'avatar' => null,
             'phone' => $validated['phone'] ?? null,
             'savings' => 'Rp 0',

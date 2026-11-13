@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Story;
+use App\Models\StoryHighlight;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -30,6 +31,10 @@ class StoryTest extends TestCase
         $this->assertSame('Momen warga hari ini', $story->caption);
         $this->assertTrue($story->expires_at->between(now()->addHours(23), now()->addHours(25)));
         Storage::disk('public')->assertExists($story->image);
+
+        $this->get(route('stories.image', $story))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/jpeg');
     }
 
     public function test_user_can_add_only_their_own_stories_to_a_highlight(): void
@@ -46,11 +51,13 @@ class StoryTest extends TestCase
         $this->actingAs($owner)->post(route('stories.highlights.store'), [
             'title' => 'Kenangan',
             'story_ids' => [$story->id],
+            'thumbnail_story_id' => $story->id,
         ])->assertRedirect();
 
         $this->assertDatabaseHas('story_highlights', [
             'user_id' => $owner->id,
             'title' => 'Kenangan',
+            'thumbnail_story_id' => $story->id,
         ]);
         $this->assertDatabaseHas('story_highlight_stories', [
             'story_id' => $story->id,
@@ -72,6 +79,39 @@ class StoryTest extends TestCase
             'user_id' => $owner->id,
             'title' => 'Tidak valid',
         ]);
+    }
+
+    public function test_user_can_upload_a_custom_highlight_thumbnail(): void
+    {
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $story = Story::create([
+            'user_id' => $owner->id,
+            'image' => 'stories/moment.jpg',
+            'caption' => 'Momen',
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->actingAs($owner)->post(route('stories.highlights.store'), [
+            'title' => 'Kenangan',
+            'story_ids' => [$story->id],
+            'thumbnail' => UploadedFile::fake()->image('cover.jpg'),
+        ])->assertRedirect();
+
+        $highlight = StoryHighlight::where('user_id', $owner->id)->firstOrFail();
+        $this->assertNotNull($highlight->thumbnail_path);
+        $this->assertNull($highlight->thumbnail_story_id);
+        Storage::disk('public')->assertExists($highlight->thumbnail_path);
+
+        $this->actingAs($owner)
+            ->get(route('stories.highlights.image', $highlight))
+            ->assertOk()
+            ->assertHeader('content-type', 'image/jpeg');
+
+        $this->actingAs($owner)
+            ->get(route('profile'))
+            ->assertOk()
+            ->assertSee(route('stories.highlights.image', $highlight), false);
     }
 
     public function test_community_profile_and_chat_render_without_seeded_post_content(): void
