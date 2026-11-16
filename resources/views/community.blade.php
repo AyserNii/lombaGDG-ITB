@@ -138,6 +138,22 @@
 
     <!-- CENTER FEED -->
     <div class="space-y-4">
+        <div class="rounded-[24px] border border-slate-100 bg-white p-3 shadow-[0_12px_40px_rgba(76,84,210,0.08)]">
+            <div class="relative">
+                <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path stroke-linecap="round" d="m16 16 4 4"></path>
+                </svg>
+                <input id="community-search-launcher" type="text" readonly
+                       placeholder="Cari akun warga..."
+                       aria-label="Cari akun warga"
+                       aria-haspopup="dialog"
+                       onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openCommunitySearch(); }"
+                       onclick="openCommunitySearch()"
+                       class="w-full cursor-pointer rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-12 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 hover:border-indigo-200 hover:bg-white focus:border-[#4154e8] focus:ring-4 focus:ring-[#4154e8]/10">
+            </div>
+        </div>
+
         @if (session('success'))
             <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('success') }}</div>
         @endif
@@ -370,6 +386,48 @@
             </div>
         </section>
     </aside>
+</div>
+
+<div id="community-search-modal" class="fixed inset-0 z-[90] hidden items-start justify-center overflow-y-auto bg-slate-950/45 p-4 pt-[8vh] backdrop-blur-sm"
+     role="dialog" aria-modal="true" aria-labelledby="community-search-title" aria-hidden="true"
+     onclick="closeCommunitySearch()">
+    <section class="w-full max-w-xl overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-2xl"
+             onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div>
+                <h2 id="community-search-title" class="text-base font-extrabold text-slate-900">Cari komunitas</h2>
+                <p class="mt-0.5 text-xs text-slate-500">Temukan akun dan postingan warga.</p>
+            </div>
+            <button type="button" onclick="closeCommunitySearch()"
+                    class="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                    aria-label="Tutup pencarian">
+                @include('partials.icons', ['name' => 'close', 'class' => 'h-5 w-5'])
+            </button>
+        </div>
+        <div class="p-4 sm:p-5">
+            <div class="relative">
+                <svg class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#4154e8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path stroke-linecap="round" d="m16 16 4 4"></path>
+                </svg>
+                <input id="community-search-input" type="text" autocomplete="off"
+                       placeholder="Cari akun atau postingan..."
+                       aria-label="Cari akun atau postingan"
+                       oninput="searchCommunityResults(this.value)"
+                       class="w-full rounded-2xl border border-indigo-100 bg-indigo-50/60 py-3 pl-12 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#4154e8] focus:bg-white focus:ring-4 focus:ring-[#4154e8]/10">
+                <button id="community-search-clear" type="button" onclick="clearCommunitySearch()"
+                        class="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-full p-1 text-rose-600 transition hover:bg-rose-50 hover:text-rose-700"
+                        aria-label="Hapus pencarian">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m6 6 12 12M18 6 6 18"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="community-search-results" class="mt-3 max-h-[55vh] min-h-24 overflow-y-auto" aria-live="polite">
+                <p class="rounded-2xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Ketik minimal 2 karakter untuk mencari akun atau postingan.</p>
+            </div>
+        </div>
+    </section>
 </div>
 
 <div id="story-composer" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="story-composer-title">
@@ -1322,5 +1380,185 @@ function toggleFollowSide(userId, btn) {
         }
     });
 }
+
+const communitySearchUrl = @json(route('community.search'));
+let communitySearchTimer = null;
+let communitySearchController = null;
+
+function openCommunitySearch() {
+    const modal = document.getElementById('community-search-modal');
+    const input = document.getElementById('community-search-input');
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    modal.setAttribute('aria-hidden', 'false');
+    input.value = '';
+    searchCommunityResults('');
+    window.setTimeout(() => input.focus(), 0);
+}
+
+function closeCommunitySearch() {
+    const modal = document.getElementById('community-search-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    modal.setAttribute('aria-hidden', 'true');
+
+    window.clearTimeout(communitySearchTimer);
+    if (communitySearchController) {
+        communitySearchController.abort();
+        communitySearchController = null;
+    }
+
+    document.getElementById('community-search-launcher').focus();
+}
+
+function showCommunitySearchMessage(message, isError = false) {
+    const results = document.getElementById('community-search-results');
+    results.innerHTML = '';
+    const messageElement = document.createElement('p');
+    messageElement.className = `rounded-2xl px-4 py-6 text-center text-sm ${isError ? 'bg-rose-50 text-rose-700' : 'bg-slate-50 text-slate-500'}`;
+    messageElement.textContent = message;
+    results.appendChild(messageElement);
+}
+
+function escapeCommunitySearchHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    })[character]);
+}
+
+function renderCommunitySearchUsers(users, posts = []) {
+    const results = document.getElementById('community-search-results');
+    if (!users.length && !posts.length) {
+        showCommunitySearchMessage('Akun atau postingan yang cocok belum ditemukan.');
+        return;
+    }
+
+    const userResults = users.length
+        ? `<section>
+                <h3 class="px-3 pb-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Akun</h3>
+                ${users.map(user => {
+                    const avatar = user.avatar
+                        ? `<img src="${escapeCommunitySearchHtml(user.avatar)}" alt="" class="h-11 w-11 rounded-full object-cover">`
+                        : `<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-extrabold text-[#4154e8]">${escapeCommunitySearchHtml(user.initials)}</span>`;
+                    const username = user.username ? `@${user.username}` : 'Akun warga';
+
+                    return `
+                        <a href="${escapeCommunitySearchHtml(user.profile_url)}" class="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-indigo-50">
+                            ${avatar}
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate text-sm font-bold text-slate-900">${escapeCommunitySearchHtml(user.name)}</span>
+                                <span class="mt-0.5 block truncate text-xs text-slate-500">${escapeCommunitySearchHtml(username)}</span>
+                            </span>
+                            <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"></path>
+                            </svg>
+                        </a>`;
+                }).join('')}
+            </section>`
+        : '';
+    const postResults = posts.length
+        ? `<section class="mt-4 border-t border-slate-100 pt-4">
+                <h3 class="px-3 pb-1 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Postingan</h3>
+                ${posts.map(post => {
+                    const thumbnail = post.image
+                        ? `<img src="${escapeCommunitySearchHtml(post.image)}" alt="" class="h-14 w-14 rounded-xl object-cover">`
+                        : `<span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-[#4154e8]">
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 5.5A1.5 1.5 0 0 1 5.5 4H18a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5.5Z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 17 5-5 3.5 3 2.5-2 4.5 4.5M9 8h.01"></path>
+                                </svg>
+                           </span>`;
+                    const caption = post.caption || 'Postingan warga';
+                    const author = post.author_username ? `@${post.author_username}` : post.author_name;
+                    const metadata = [post.type, author, post.created_at].filter(Boolean).join(' · ');
+
+                    return `
+                        <a href="${escapeCommunitySearchHtml(post.post_url)}" class="flex items-center gap-3 rounded-2xl px-3 py-3 transition hover:bg-indigo-50">
+                            ${thumbnail}
+                            <span class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-slate-900">${escapeCommunitySearchHtml(caption)}</span>
+                                <span class="mt-1 block truncate text-xs text-slate-500">${escapeCommunitySearchHtml(metadata)}</span>
+                            </span>
+                            <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"></path>
+                            </svg>
+                        </a>`;
+                }).join('')}
+            </section>`
+        : '';
+
+    results.innerHTML = userResults + postResults;
+}
+
+function searchCommunityResults(value) {
+    const query = value.trim();
+    document.getElementById('community-search-clear').classList.toggle('hidden', query.length === 0);
+    window.clearTimeout(communitySearchTimer);
+    if (communitySearchController) {
+        communitySearchController.abort();
+        communitySearchController = null;
+    }
+
+    if (query.length < 2) {
+        showCommunitySearchMessage('Ketik minimal 2 karakter untuk mencari akun atau postingan.');
+        return;
+    }
+
+    showCommunitySearchMessage('Mencari akun...');
+    communitySearchTimer = window.setTimeout(async () => {
+        const controller = new AbortController();
+        communitySearchController = controller;
+
+        try {
+            const response = await fetch(`${communitySearchUrl}?q=${encodeURIComponent(query)}`, {
+                headers: { Accept: 'application/json' },
+                signal: controller.signal
+            });
+            if (!response.ok) {
+                throw new Error(`Pencarian akun gagal (${response.status}).`);
+            }
+
+            const data = await response.json();
+            if (document.getElementById('community-search-input').value.trim() !== query) {
+                return;
+            }
+            renderCommunitySearchUsers(
+                Array.isArray(data.users) ? data.users : [],
+                Array.isArray(data.posts) ? data.posts : []
+            );
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+            console.error(error);
+            if (document.getElementById('community-search-input').value.trim() === query) {
+                showCommunitySearchMessage('Pencarian gagal. Coba lagi sebentar lagi.', true);
+            }
+        } finally {
+            if (communitySearchController === controller) {
+                communitySearchController = null;
+            }
+        }
+    }, 250);
+}
+
+function clearCommunitySearch() {
+    const input = document.getElementById('community-search-input');
+    input.value = '';
+    searchCommunityResults('');
+    input.focus();
+}
+
+window.addEventListener('keydown', event => {
+    const modal = document.getElementById('community-search-modal');
+    if (event.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closeCommunitySearch();
+    }
+});
 </script>
 @endsection

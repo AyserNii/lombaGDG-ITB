@@ -80,6 +80,28 @@ class Post extends Model
         return $query->get();
     }
 
+    public static function searchCommunity(string $term, int $limit = 8)
+    {
+        $term = trim($term);
+        if (mb_strlen($term) < 2) {
+            return collect();
+        }
+
+        return static::query()
+            ->with('user:id,name,username,avatar')
+            ->where(function ($query) use ($term) {
+                $query->where('caption', 'like', '%'.$term.'%')
+                    ->orWhere('type', 'like', '%'.$term.'%')
+                    ->orWhereHas('user', function ($userQuery) use ($term) {
+                        $userQuery->where('name', 'like', '%'.$term.'%')
+                            ->orWhere('username', 'like', '%'.$term.'%');
+                    });
+            })
+            ->latest()
+            ->limit($limit)
+            ->get(['id', 'user_id', 'image', 'caption', 'type', 'created_at']);
+    }
+
     public static function dashboardHighlights(int $limit = 3)
     {
         return static::with('user')

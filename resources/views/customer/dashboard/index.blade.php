@@ -72,7 +72,7 @@
                     </div>
                 </div>
 
-                <div class="mt-6 flex h-44 items-end justify-between gap-2 pt-4">
+                <div class="mt-6 flex h-44 items-end justify-between gap-2 pt-4" role="group" aria-label="Grafik dampak penghematan">
                     @php
                         $bars = [
                             ['label' => 'Makan', 'val' => '85.3k', 'h_total' => '88%', 'h_top' => '35%'],
@@ -85,18 +85,28 @@
                     @endphp
 
                     @foreach ($bars as $bar)
-                        <div class="flex flex-1 flex-col items-center gap-1.5 h-full justify-end">
-                            <span class="text-[10px] font-semibold text-[#7e8ba0]">{{ $bar['val'] }}</span>
-                            <div class="w-full max-w-[28px] overflow-hidden rounded-t-md flex flex-col justify-end" style="height: {{ $bar['h_total'] }};">
+                        <button type="button"
+                                data-dashboard-chart-item
+                                data-chart-label="{{ $bar['label'] }}"
+                                data-chart-value="{{ $bar['val'] }}"
+                                aria-label="{{ $bar['label'] }}: {{ $bar['val'] }}"
+                                aria-pressed="false"
+                                class="dashboard-chart-item flex h-full flex-1 flex-col items-center justify-end gap-1.5 rounded-lg outline-none transition-colors hover:bg-[#f8faff] focus-visible:ring-2 focus-visible:ring-[#4154e8]">
+                            <span data-chart-value class="text-[10px] font-semibold text-[#7e8ba0]">{{ $bar['val'] }}</span>
+                            <div class="dashboard-chart-track flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t-md"
+                                 style="height: {{ $bar['h_total'] }}; --chart-delay: {{ $loop->index * 90 }}ms;">
                                 <div class="w-full bg-[#7595ff] rounded-t-md" style="height: {{ $bar['h_top'] }};"></div>
                                 <div class="w-full bg-[#4154e8] flex-1"></div>
                             </div>
-                            <p class="h-6 text-center text-[10px] font-semibold leading-tight text-[#7e8ba0]">
+                            <p class="dashboard-chart-label h-6 text-center text-[10px] font-semibold leading-tight text-[#7e8ba0]">
                                 {{ $bar['label'] }}
                             </p>
-                        </div>
+                        </button>
                     @endforeach
                 </div>
+                <p class="mt-1 min-h-4 text-center text-[10px] font-semibold text-[#7e8ba0]" data-dashboard-chart-detail aria-live="polite">
+                    Pilih batang grafik untuk melihat rinciannya.
+                </p>
             </section>
 
             <section class="flex flex-col justify-between rounded-[26px] bg-white p-6 shadow-[0_4px_24px_rgba(30,40,110,0.04)]">
@@ -114,7 +124,7 @@
                 <div class="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-1 pb-1">
                     @php
                         $visits = [
-                            ['percent' => 92, 'label' => 'Bareng Makan', 'sub' => 'Nasi & geprek Beji'],
+                        ['percent' => $foodSessionActivity['percent'], 'label' => 'Bareng Makan', 'sub' => $foodSessionActivity['subtitle']],
                             ['percent' => 83, 'label' => 'Bareng Belanja', 'sub' => 'Indomaret cluster'],
                             ['percent' => 78, 'label' => 'Bareng Kirim', 'sub' => 'Rute Depok Lama'],
                             ['percent' => 97, 'label' => 'Match Lokasi', 'sub' => 'Radius 800m'],
@@ -151,51 +161,60 @@
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h2 class="text-base font-extrabold text-[#1e293b]">Tetangga Sering Bareng</h2>
-                    <p class="text-[11px] font-semibold text-[#7e8ba0]">Komunitas gotong royong terdekat</p>
+                    <p class="text-[11px] font-semibold text-[#7e8ba0]">Warga dengan lokasi yang sama</p>
                 </div>
                 <a href="{{ route('community') }}" class="text-xs font-bold text-[#4154e8] hover:underline">Lihat semua</a>
             </div>
 
             <div class="space-y-3">
-                <div class="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3 transition hover:bg-[#f1f4f9]">
-                    <div class="flex items-center gap-3.5">
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-black shadow-sm select-none">
-                            MJ
+                @forelse ($nearbyNeighbors as $neighbor)
+                    @php
+                        $neighborNameParts = preg_split('/\s+/', trim($neighbor->name));
+                        $neighborInitials = strtoupper(
+                            mb_substr($neighborNameParts[0] ?? 'W', 0, 1)
+                            . (isset($neighborNameParts[1]) ? mb_substr($neighborNameParts[1], 0, 1) : '')
+                        );
+                    @endphp
+                    <div class="flex items-center justify-between gap-3 rounded-2xl bg-[#f8fafc] px-4 py-3 transition hover:bg-[#f1f4f9]">
+                        <div class="flex min-w-0 items-center gap-3.5">
+                            <a href="{{ route('profile.show', $neighbor->username ?: $neighbor->id) }}" class="shrink-0">
+                                @if ($neighbor->avatar)
+                                    <img src="{{ $neighbor->avatar }}" alt="{{ $neighbor->name }}" class="h-11 w-11 rounded-full object-cover shadow-sm">
+                                @else
+                                    <span class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-xs font-black text-white shadow-sm">
+                                        {{ $neighborInitials }}
+                                    </span>
+                                @endif
+                            </a>
+                            <div class="min-w-0">
+                                <a href="{{ route('profile.show', $neighbor->username ?: $neighbor->id) }}" class="block truncate text-sm font-bold text-[#1e293b] hover:text-[#4154e8]">
+                                    {{ $neighbor->name }}
+                                </a>
+                                <p class="truncate text-xs font-medium text-[#7e8ba0]">
+                                    {{ $neighbor->role ?: 'Warga BARENG' }} · {{ $neighbor->location }}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-[#1e293b]">Mary Johnson</h3>
-                            <p class="text-xs font-medium text-[#7e8ba0]">Mentor Sesi Makan · Cluster Beji Indah</p>
+                        <div class="flex shrink-0 items-center gap-2">
+                            <a href="{{ route('chat', ['user' => $neighbor->username ?: $neighbor->id]) }}"
+                               class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] transition hover:bg-white hover:text-[#4154e8] hover:shadow-sm"
+                               title="Chat {{ $neighbor->name }}" aria-label="Chat {{ $neighbor->name }}">
+                                @include('partials.icons', ['name' => 'mail', 'class' => 'h-4 w-4'])
+                            </a>
+                            @if ($neighbor->phone)
+                                <a href="tel:{{ preg_replace('/[^0-9+]/', '', $neighbor->phone) }}"
+                                   class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] transition hover:bg-white hover:text-[#4154e8] hover:shadow-sm"
+                                   title="Telepon {{ $neighbor->name }}" aria-label="Telepon {{ $neighbor->name }}">
+                                    @include('partials.icons', ['name' => 'phone', 'class' => 'h-4 w-4'])
+                                </a>
+                            @endif
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] hover:bg-white hover:shadow-sm" title="Chat Sesi">
-                            @include('partials.icons', ['name' => 'mail', 'class' => 'h-4 w-4 text-[#1e293b]'])
-                        </button>
-                        <button type="button" class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] hover:bg-white hover:shadow-sm" title="Telepon">
-                            @include('partials.icons', ['name' => 'phone', 'class' => 'h-4 w-4 text-[#1e293b]'])
-                        </button>
+                @empty
+                    <div class="rounded-2xl bg-[#f8fafc] px-4 py-6 text-center">
+                        <p class="text-xs font-semibold text-[#7e8ba0]">Belum ada tetangga lain yang terdaftar di lokasi ini.</p>
                     </div>
-                </div>
-
-                <div class="flex items-center justify-between rounded-2xl bg-[#f8fafc] px-4 py-3 transition hover:bg-[#f1f4f9]">
-                    <div class="flex items-center gap-3.5">
-                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-black shadow-sm select-none">
-                            JB
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-[#1e293b]">James Brown</h3>
-                            <p class="text-xs font-medium text-[#7e8ba0]">Creator Belanja Mingguan · Margonda Raya</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button type="button" class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] hover:bg-white hover:shadow-sm" title="Chat Sesi">
-                            @include('partials.icons', ['name' => 'mail', 'class' => 'h-4 w-4 text-[#1e293b]'])
-                        </button>
-                        <button type="button" class="flex h-8 w-8 items-center justify-center rounded-xl text-[#1e293b] hover:bg-white hover:shadow-sm" title="Telepon">
-                            @include('partials.icons', ['name' => 'phone', 'class' => 'h-4 w-4 text-[#1e293b]'])
-                        </button>
-                    </div>
-                </div>
+                @endforelse
             </div>
         </section>
 

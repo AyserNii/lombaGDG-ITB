@@ -142,4 +142,34 @@ class KomunitasController extends Controller
     {
         return $this->list(request());
     }
+
+    public function searchCommunity(Request $request)
+    {
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:2', 'max:80'],
+        ]);
+
+        $users = User::searchByNameOrUsername($validated['q']);
+        $posts = Post::searchCommunity($validated['q']);
+
+        return response()->json([
+            'users' => $users->map(fn (User $user) => [
+                'name' => $user->name,
+                'username' => $user->username,
+                'avatar' => $user->avatar,
+                'location' => $user->location,
+                'profile_url' => route('profile.show', $user->username ?: $user->id),
+                'initials' => strtoupper(mb_substr($user->name, 0, 2)),
+            ])->values(),
+            'posts' => $posts->map(fn (Post $post) => [
+                'caption' => $post->caption,
+                'type' => $post->type,
+                'image' => $post->image,
+                'author_name' => $post->user->name,
+                'author_username' => $post->user->username,
+                'created_at' => $post->created_at?->diffForHumans(),
+                'post_url' => route('community.posts.show', $post->id),
+            ])->values(),
+        ]);
+    }
 }

@@ -2,135 +2,267 @@
 
 namespace App\Models\Customer;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class BarengMakanModel extends Model
 {
-    use HasFactory;
-    public $timestamps = false;
+    protected $table = 'food_sessions';
 
-    private static function get_data_source()
+    protected $fillable = [
+        'host_id',
+        'merchant_name',
+        'category',
+        'description',
+        'pickup_point',
+        'location',
+        'image',
+        'slots_max',
+        'normal_ongkir',
+        'order_deadline',
+        'popular_menus',
+        'status',
+    ];
+
+    protected function casts(): array
     {
         return [
-            [
-                'id' => 1,
-                'merchant' => 'Warung Nasi Goreng & Seafood Beji',
-                'category' => 'Makanan Nusantara',
-                'distance' => '250m dari lokasimu',
-                'rating' => '4.9',
-                'host' => 'Budi Santoso',
-                'host_role' => 'Host Cluster Beji',
-                'host_avatar' => 'BS',
-                'slots_filled' => 3,
-                'slots_max' => 5,
-                'time_left' => 'Sisa 18 menit',
-                'pickup_point' => 'Pos Satpam Blok B-12',
-                'image' => 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
-                'ongkir_split' => 'Rp 3.500/orang',
-                'normal_ongkir' => 'Rp 14.000',
-                'popular_menus' => ['Nasgor Spesial', 'Kwetiau Goreng Sapi', 'Capcay Kuah'],
-                'promo' => 'Diskon Ongkir 75% Dibagi Rata',
-            ],
-            [
-                'id' => 2,
-                'merchant' => 'Ayam Geprek & Sambal Bawang 88',
-                'category' => 'Aneka Ayam & Pedas',
-                'distance' => '450m dari lokasimu',
-                'rating' => '4.8',
-                'host' => 'Siti Rahma',
-                'host_role' => 'Host RT 03',
-                'host_avatar' => 'SR',
-                'slots_filled' => 2,
-                'slots_max' => 4,
-                'time_left' => 'Sisa 12 menit',
-                'pickup_point' => 'Lobby Cluster Timur',
-                'image' => 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=80',
-                'ongkir_split' => 'Rp 4.000/orang',
-                'normal_ongkir' => 'Rp 16.000',
-                'popular_menus' => ['Paket Geprek Keju', 'Geprek Sambal Matah', 'Tahu Tempe Goreng'],
-                'promo' => 'Beli 3 Porsi Free Es Teh Manis',
-            ],
-            [
-                'id' => 3,
-                'merchant' => 'Mie Ayam & Bakso Urat Pak Min',
-                'category' => 'Bakso & Mie',
-                'distance' => '600m dari lokasimu',
-                'rating' => '4.8',
-                'host' => 'Ahmad Fauzi',
-                'host_role' => 'Host Beji Indah',
-                'host_avatar' => 'AF',
-                'slots_filled' => 4,
-                'slots_max' => 6,
-                'time_left' => 'Sisa 25 menit',
-                'pickup_point' => 'Rumah Host No. 18',
-                'image' => 'https://images.unsplash.com/photo-1552611052-33e04de89d71?auto=format&fit=crop&w=600&q=80',
-                'ongkir_split' => 'Rp 3.000/orang',
-                'normal_ongkir' => 'Rp 15.000',
-                'popular_menus' => ['Mie Ayam Bakso Jumbo', 'Pangsit Rebus', 'Bakso Urat Kuah'],
-                'promo' => 'Promo Diskon Ongkir Komunitas',
-            ],
-            [
-                'id' => 4,
-                'merchant' => 'Sate Taichan & Kulit Senayan Margonda',
-                'category' => 'Sate & Street Food',
-                'distance' => '850m dari lokasimu',
-                'rating' => '4.9',
-                'host' => 'Dewi Lestari',
-                'host_role' => 'Host Margonda',
-                'host_avatar' => 'DL',
-                'slots_filled' => 3,
-                'slots_max' => 5,
-                'time_left' => 'Sisa 30 menit',
-                'pickup_point' => 'Pos Satpam Gerbang Depan',
-                'image' => 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80',
-                'ongkir_split' => 'Rp 4.500/orang',
-                'normal_ongkir' => 'Rp 18.000',
-                'popular_menus' => ['Sate Daging 20 Tusuk', 'Sate Kulit Krispi', 'Lontong Sayur'],
-                'promo' => 'Free Sambal Ekstra & Jeruk Nipis',
-            ],
+            'popular_menus' => 'array',
+            'order_deadline' => 'datetime',
         ];
     }
 
-    public static function total_sesimakan($limit = 100)
+    /**
+     * @return array{sessions: LengthAwarePaginator, activeSessionCount: int, activeParticipantCount: int}
+     */
+    public static function browse(string $location, string $searchTerm, int $userId, int $page): array
     {
-        $data = self::get_data_source();
-        return (object)['total' => count($data)];
-    }
+        $openSessions = static::query()
+            ->where('status', 'open')
+            ->where(fn (Builder $query) => $query
+                ->whereNull('order_deadline')
+                ->orWhere('order_deadline', '>', now()));
 
-    public static function list_sesimakan($limit = 10, $offset = 0)
-    {
-        $data = self::get_data_source();
-        return array_slice($data, $offset, $limit);
-    }
-
-    public static function total_sesimakancari($cari, $limit = 100)
-    {
-        $data = self::get_data_source();
-        $filtered = array_filter($data, function ($item) use ($cari) {
-            return stripos($item['merchant'], $cari) !== false || stripos($item['category'], $cari) !== false;
-        });
-        return (object)['total' => count($filtered)];
-    }
-
-    public static function list_sesimakancari($cari, $limit = 10, $offset = 0)
-    {
-        $data = self::get_data_source();
-        $filtered = array_values(array_filter($data, function ($item) use ($cari) {
-            return stripos($item['merchant'], $cari) !== false || stripos($item['category'], $cari) !== false;
-        }));
-        return array_slice($filtered, $offset, $limit);
-    }
-
-    public static function data_sesimakan($idsesi)
-    {
-        $data = self::get_data_source();
-        foreach ($data as $item) {
-            if ($item['id'] == $idsesi) {
-                return (object)$item;
-            }
+        if ($location !== '') {
+            $openSessions->whereRaw('LOWER(TRIM(location)) = ?', [mb_strtolower($location)]);
         }
-        return null;
+
+        $activeSessionCount = (clone $openSessions)->count();
+        $activeParticipantCount = DB::table('food_session_participants as participants')
+            ->join('food_sessions as sessions', 'participants.food_session_id', '=', 'sessions.id')
+            ->where('participants.status', 'joined')
+            ->where('sessions.status', 'open')
+            ->where(fn ($query) => $query
+                ->whereNull('sessions.order_deadline')
+                ->orWhere('sessions.order_deadline', '>', now()))
+            ->when($location !== '', fn ($query) => $query->whereRaw(
+                'LOWER(TRIM(sessions.location)) = ?',
+                [mb_strtolower($location)]
+            ))
+            ->count();
+
+        $sessionsQuery = (clone $openSessions)
+            ->with('host:id,name,username,avatar')
+            ->withCount([
+                'participants as participants_count' => fn (Builder $query) => $query->where('status', 'joined'),
+                'likes',
+                'comments',
+            ])
+            ->withExists([
+                'likes as is_liked_by_user' => fn (Builder $query) => $query->where('users.id', $userId),
+                'participants as has_joined' => fn (Builder $query) => $query
+                    ->where('user_id', $userId)
+                    ->where('status', 'joined'),
+            ]);
+
+        if ($searchTerm !== '') {
+            $sessionsQuery->where(fn (Builder $query) => $query
+                ->where('merchant_name', 'like', '%'.$searchTerm.'%')
+                ->orWhere('category', 'like', '%'.$searchTerm.'%')
+                ->orWhere('description', 'like', '%'.$searchTerm.'%'));
+        }
+
+        return [
+            'sessions' => $sessionsQuery
+                ->latest()
+                ->paginate(8, ['*'], 'page', max(1, $page))
+                ->withQueryString(),
+            'activeSessionCount' => $activeSessionCount,
+            'activeParticipantCount' => $activeParticipantCount,
+        ];
+    }
+
+    /**
+     * @return array{percent: int, activeSessionCount: int, participatingSessionCount: int, subtitle: string}
+     */
+    public static function dashboardParticipation(int $userId, ?string $location): array
+    {
+        $location = trim((string) $location);
+        if ($location === '' || mb_strtolower($location) === 'belum diatur') {
+            return [
+                'percent' => 0,
+                'activeSessionCount' => 0,
+                'participatingSessionCount' => 0,
+                'subtitle' => 'Atur lokasi profil untuk melihat sesi terdekat',
+            ];
+        }
+
+        $activeSessions = static::query()
+            ->where('status', 'open')
+            ->whereRaw('LOWER(TRIM(location)) = ?', [mb_strtolower($location)])
+            ->where(fn (Builder $query) => $query
+                ->whereNull('order_deadline')
+                ->orWhere('order_deadline', '>', now()));
+
+        $activeSessionCount = (clone $activeSessions)->count();
+        $participatingSessionCount = (clone $activeSessions)
+            ->where(fn (Builder $query) => $query
+                ->where('host_id', $userId)
+                ->orWhereHas('participants', fn (Builder $participants) => $participants
+                    ->where('user_id', $userId)
+                    ->where('status', 'joined')))
+            ->count();
+
+        $percent = $activeSessionCount > 0
+            ? (int) round($participatingSessionCount / $activeSessionCount * 100)
+            : 0;
+        $subtitle = $activeSessionCount === 0
+            ? 'Belum ada sesi aktif di lokasimu'
+            : $participatingSessionCount.' dari '.$activeSessionCount.' sesi aktif diikuti';
+
+        return [
+            'percent' => $percent,
+            'activeSessionCount' => $activeSessionCount,
+            'participatingSessionCount' => $participatingSessionCount,
+            'subtitle' => $subtitle,
+        ];
+    }
+
+    public function loadHost(): self
+    {
+        $this->load('host:id,name,username,avatar');
+
+        return $this;
+    }
+
+    public function paginateComments(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->comments()
+            ->with('user:id,name,username,avatar')
+            ->paginate($perPage);
+    }
+
+    public static function createForHost(User $host, array $attributes): self
+    {
+        return DB::transaction(function () use ($host, $attributes): self {
+            $foodSession = static::query()->create(array_merge($attributes, ['host_id' => $host->id]));
+            $foodSession->participants()->create([
+                'user_id' => $host->id,
+                'status' => 'joined',
+            ]);
+
+            return $foodSession;
+        });
+    }
+
+    public function lockForUpdate(): self
+    {
+        return static::query()->lockForUpdate()->findOrFail($this->getKey());
+    }
+
+    public function close(): void
+    {
+        $this->update(['status' => 'closed']);
+    }
+
+    public function hasJoined(int $userId): bool
+    {
+        return $this->participants()
+            ->where('user_id', $userId)
+            ->where('status', 'joined')
+            ->exists();
+    }
+
+    public function joinedParticipantCount(): int
+    {
+        return $this->participants()
+            ->where('status', 'joined')
+            ->count();
+    }
+
+    public function addParticipant(int $userId, array $attributes): FoodSessionParticipant
+    {
+        return $this->participants()->create(array_merge($attributes, [
+            'user_id' => $userId,
+            'status' => 'joined',
+        ]));
+    }
+
+    public function toggleLikeFor(int $userId): bool
+    {
+        $alreadyLiked = $this->likes()->where('users.id', $userId)->exists();
+        if ($alreadyLiked) {
+            $this->likes()->detach($userId);
+
+            return false;
+        }
+
+        $this->likes()->attach($userId);
+
+        return true;
+    }
+
+    public function likesCount(): int
+    {
+        return $this->likes()->count();
+    }
+
+    public function addComment(int $userId, string $comment): FoodSessionComment
+    {
+        return $this->comments()->create([
+            'user_id' => $userId,
+            'comment' => $comment,
+        ]);
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        $image = $this->attributes['image'] ?? null;
+        if (! $image) {
+            return null;
+        }
+
+        if (str_starts_with($image, 'food-sessions/')) {
+            return route('makan.sessions.images.show', ['fileName' => basename($image)]);
+        }
+
+        return $image;
+    }
+
+    public function host(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'host_id');
+    }
+
+    public function participants(): HasMany
+    {
+        return $this->hasMany(FoodSessionParticipant::class, 'food_session_id');
+    }
+
+    public function likes(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'food_session_likes', 'food_session_id', 'user_id')
+            ->withTimestamps();
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(FoodSessionComment::class, 'food_session_id')->latest();
     }
 }

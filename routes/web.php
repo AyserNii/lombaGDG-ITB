@@ -28,7 +28,6 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// ─── AUTHENTICATION (PREFIX & GROUP STRUKTUR SESUAI CONTOH) ─────────────────────
 Route::prefix('auth')->name('auth.')->group(function () {
     Route::middleware(['guest'])->group(function () {
         Route::get('/login', [AuthLogin::class, 'showLoginForm'])->name('login');
@@ -50,7 +49,6 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/logout', [AuthLogin::class, 'logout'])->name('logout');
 
-// ─── CUSTOMER ROUTES (SESUAI POLA STRUKTUR CONTOH) ──────────────────────────────
 Route::prefix('customer')->name('customer.')->group(function () {
     Route::middleware(['auth'])->group(function () {
         // Beranda / Dashboard
@@ -136,14 +134,23 @@ Route::prefix('customer')->name('customer.')->group(function () {
     });
 });
 
-// ─── FLAT ROUTE COMPATIBILITY (UNTUK BLADE VIEWS & JS AJAX SEBELUMNYA) ──────────
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [CustomerBeranda::class, 'index'])->name('dashboard');
     Route::get('/makan', [CustomerBarengMakan::class, 'index'])->name('makan');
+    Route::get('/makan/sessions/images/{fileName}', [CustomerBarengMakan::class, 'image'])
+        ->where('fileName', '[A-Za-z0-9._-]+')
+        ->name('makan.sessions.images.show');
+    Route::post('/makan/sessions/images', [CustomerBarengMakan::class, 'uploadImage'])->name('makan.sessions.images.store');
+    Route::get('/makan/sessions/{foodSession}/komentar', [CustomerBarengMakan::class, 'commentsPage'])->name('makan.sessions.comments');
+    Route::post('/makan/sessions', [CustomerBarengMakan::class, 'store'])->name('makan.sessions.store');
+    Route::post('/makan/sessions/{foodSession}/join', [CustomerBarengMakan::class, 'join'])->name('makan.sessions.join');
+    Route::post('/makan/sessions/{foodSession}/like', [CustomerBarengMakan::class, 'toggleLike'])->name('makan.sessions.like');
+    Route::post('/makan/sessions/{foodSession}/comments', [CustomerBarengMakan::class, 'comment'])->name('makan.sessions.comments.store');
     Route::get('/belanja', [CustomerBarengBelanja::class, 'index'])->name('belanja');
     Route::get('/kirim', [CustomerBarengKirim::class, 'index'])->name('kirim');
     Route::get('/sesi', [CustomerSesiAktif::class, 'index'])->name('sesi');
     Route::get('/komunitas', [CustomerKomunitas::class, 'index'])->name('community');
+    Route::get('/community/search', [CustomerKomunitas::class, 'searchCommunity'])->name('community.search');
     Route::get('/community/posts/{id}', [CustomerPost::class, 'communityShow'])->name('community.posts.show');
     Route::get('/pengaturan', [CustomerPengaturan::class, 'index'])->name('settings');
     Route::post('/pengaturan', [CustomerPengaturan::class, 'update'])->name('settings.update');

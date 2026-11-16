@@ -47,5 +47,21 @@ class BerandaModel extends Model
             ->take($limit)
             ->get();
     }
+
+    public static function tetangga_terdekat(int $userId, ?string $location, int $limit = 2)
+    {
+        $location = trim((string) $location);
+        if ($location === '' || mb_strtolower($location) === 'belum diatur') {
+            return collect();
+        }
+
+        return DB::table('users')
+            ->select(['id', 'name', 'username', 'avatar', 'phone', 'location', 'role'])
+            ->where('id', '!=', $userId)
+            ->whereRaw('LOWER(TRIM(location)) = ?', [mb_strtolower($location)])
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+    }
 }
 

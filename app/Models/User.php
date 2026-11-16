@@ -164,6 +164,24 @@ class User extends Authenticatable
         return $query->take($limit)->get();
     }
 
+    public static function searchByNameOrUsername(string $term, int $limit = 10)
+    {
+        $term = trim($term);
+        if (mb_strlen($term) < 2) {
+            return collect();
+        }
+
+        return static::query()
+            ->select(['id', 'name', 'username', 'avatar', 'location'])
+            ->where(function ($query) use ($term) {
+                $query->where('name', 'like', '%'.$term.'%')
+                    ->orWhere('username', 'like', '%'.$term.'%');
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+    }
+
     public function followingUserIds(): array
     {
         return $this->following()->pluck('users.id')->map(fn ($id) => (int) $id)->all();

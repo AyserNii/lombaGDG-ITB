@@ -123,12 +123,14 @@
                             </svg>
                         </button>
 
-                        <!-- Kirim Pesan DM -->
-                        <a id="detail-dm-link" href="#" class="text-slate-600 hover:text-[#4154e8] transition" title="Kirim DM ke author">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
-                        </a>
+                        <button type="button" id="detail-share-post"
+                                data-tooltip="Bagikan"
+                                data-share-url-template="{{ route('community.posts.show', ['id' => '__POST_ID__']) }}"
+                                onclick="shareCurrentPost()"
+                                class="post-share-tooltip inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-600 transition hover:bg-blue-50 hover:text-[#4154e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4154e8]"
+                                aria-label="Bagikan postingan">
+                            @include('partials.icons', ['name' => 'share', 'class' => 'h-5 w-5'])
+                        </button>
                     </div>
 
                     <!-- Bookmark / Save Button -->
@@ -157,9 +159,9 @@
                 <form onsubmit="submitDetailComment(event)" class="flex items-center gap-2">
                     <input type="text" id="detail-comment-input" placeholder="Tambahkan komentar..."
                            class="flex-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-[#4154e8] transition">
-                    <button type="submit"
-                            class="rounded-xl bg-[#4154e8] hover:bg-[#3243d4] px-4 py-2 text-xs font-extrabold text-white transition active:scale-95 shadow-sm">
-                        Kirim
+                    <button type="submit" aria-label="Kirim komentar" title="Kirim komentar"
+                            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#4154e8] text-white shadow-sm transition hover:bg-[#3243d4] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4154e8] focus-visible:ring-offset-2">
+                        @include('partials.icons', ['name' => 'send', 'class' => 'h-4 w-4'])
                     </button>
                 </form>
             </div>
@@ -317,6 +319,61 @@ function closePostDetailModal() {
     resetDetailModalState();
 }
 
+async function copyPostLinkToClipboard(url) {
+    if (navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(url);
+            return;
+        } catch (error) {
+            if (typeof document.execCommand !== 'function') throw error;
+        }
+    }
+
+    const input = document.createElement('textarea');
+    input.value = url;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.append(input);
+    input.select();
+
+    try {
+        if (!document.execCommand('copy')) {
+            throw new Error('Browser gagal menyalin tautan postingan.');
+        }
+    } finally {
+        input.remove();
+    }
+}
+
+async function shareCurrentPost() {
+    const url = document.getElementById('detail-share-post')?.dataset.shareUrl;
+    if (!url) {
+        window.showErrorToast?.('Gagal membagikan', 'Tautan postingan tidak tersedia.');
+        return;
+    }
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: 'Postingan komunitas BARENG',
+                text: 'Lihat postingan ini di BARENG.',
+                url,
+            });
+            return;
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+        }
+    }
+
+    try {
+        await copyPostLinkToClipboard(url);
+        window.showSuccessToast?.('Tautan tersalin', 'Tautan postingan berhasil disalin.');
+    } catch (error) {
+        window.showErrorToast?.('Gagal membagikan', 'Browser tidak dapat membagikan atau menyalin tautan postingan.');
+    }
+}
+
 // Close on Escape key press
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
@@ -355,7 +412,8 @@ function renderPostDetailModal(post, comments) {
     document.getElementById('detail-author-username').innerText = '@' + post.author_username;
     document.getElementById('detail-author-link').href = '/profile/' + post.author_username;
     document.getElementById('detail-author-name').href = '/profile/' + post.author_username;
-    document.getElementById('detail-dm-link').href = '/chat?user=' + post.author_username;
+    const shareButton = document.getElementById('detail-share-post');
+    shareButton.dataset.shareUrl = shareButton.dataset.shareUrlTemplate.replace('__POST_ID__', encodeURIComponent(post.id));
 
     const avatarImg = document.getElementById('detail-author-avatar');
     const avatarFallback = document.getElementById('detail-author-fallback');

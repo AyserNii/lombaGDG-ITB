@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer\BarengMakanModel;
 use App\Models\Customer\BerandaModel as MainModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,11 +49,15 @@ class BerandaController extends Controller
 
         $ringkasan = $authUser ? MainModel::data_ringkasan($authUser->id) : null;
         $communityPosts = MainModel::community_posts();
+        $nearbyNeighbors = MainModel::tetangga_terdekat($authUser->id, $authUser->location);
+        $foodSessionActivity = BarengMakanModel::dashboardParticipation($authUser->id, $authUser->location);
 
         $datakonten['judulcore'] = $this->title;
         $datakonten['user'] = $user;
         $datakonten['ringkasan'] = $ringkasan;
         $datakonten['communityPosts'] = $communityPosts;
+        $datakonten['nearbyNeighbors'] = $nearbyNeighbors;
+        $datakonten['foodSessionActivity'] = $foodSessionActivity;
         $datakonten['basePath'] = $this->basePath;
         $datakonten['routePrefix'] = $this->routePrefix;
         $datakonten['sessionNamespace'] = $this->sessionNamespace;

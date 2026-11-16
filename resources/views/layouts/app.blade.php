@@ -125,6 +125,19 @@
     </style>
 </head>
 <body class="min-h-screen bg-[#edf1f7] text-[#1e293b] antialiased font-sans">
+    <dialog id="page-transition-loader" class="page-transition-loader" data-page-transition-loader aria-labelledby="page-transition-loader-label">
+        <div class="page-transition-loader__card">
+            <img src="{{ asset('images/bareng-logo.svg') }}" alt="Logo BARENG" class="page-transition-loader__logo">
+            <p id="page-transition-loader-label" class="sr-only">Memuat halaman</p>
+            <div class="page-transition-loader__dots" aria-hidden="true">
+                <span class="page-transition-loader__dot" style="--page-loader-delay: 0ms"></span>
+                <span class="page-transition-loader__dot" style="--page-loader-delay: 120ms"></span>
+                <span class="page-transition-loader__dot" style="--page-loader-delay: 240ms"></span>
+                <span class="page-transition-loader__dot" style="--page-loader-delay: 360ms"></span>
+                <span class="page-transition-loader__dot" style="--page-loader-delay: 480ms"></span>
+            </div>
+        </div>
+    </dialog>
     @php
         $immersivePage = request()->routeIs('community', 'chat');
         $communityPage = request()->routeIs('community');
@@ -308,6 +321,7 @@
             <!-- HEADER -->
             @unless ($immersivePage)
             <header class="sticky top-0 z-20 flex items-center justify-between gap-4 bg-[#edf1f7]/95 px-6 py-4 backdrop-blur-md">
+                @unless (request()->routeIs('profile*'))
                 <div class="relative w-full max-w-md">
                     <input type="search" placeholder="Cari sesi, postingan, atau username warga..."
                            class="w-full rounded-2xl border border-transparent bg-white py-2.5 pl-4 pr-10 text-xs md:text-sm text-[#1e293b] outline-none shadow-[0_2px_12px_rgba(0,0,0,0.03)] placeholder:text-[#a0aec0] focus:ring-2 focus:ring-[#4154e8]/30">
@@ -315,8 +329,9 @@
                         @include('partials.icons', ['name' => 'search', 'class' => 'h-4 w-4'])
                     </span>
                 </div>
+                @endunless
 
-                <div class="flex items-center gap-3 md:gap-4">
+                <div id="header-actions" class="{{ request()->routeIs('profile*') ? 'ml-auto ' : '' }}flex items-center gap-3 md:gap-4">
                     <a href="{{ route('settings') }}" class="hidden sm:flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 shadow-sm text-xs font-bold text-[#1e293b] hover:text-[#4154e8]">
                         <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                         <span>{{ ($authUser['location'] ?? '') === 'Belum diatur' ? 'Atur lokasi' : ($authUser['location'] ?? 'Atur lokasi') }}</span>
